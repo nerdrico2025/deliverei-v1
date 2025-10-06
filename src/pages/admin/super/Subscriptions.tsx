@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { SuperAdminSidebar } from "../../../components/layout/SuperAdminSidebar";
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { Badge } from "../../../components/common/Badge";
+import { useAuth } from "../../../auth/AuthContext";
+import { useToast } from "../../../ui/feedback/ToastContext";
 
 type Sub = {
   id: string;
@@ -23,6 +26,16 @@ export default function SubscriptionsPage() {
     { id: "s4", empresa: "Sabor da Casa", plano: "Basic", status: "cancelado" },
   ]);
 
+  const { impersonate } = useAuth();
+  const { push } = useToast();
+  const navigate = useNavigate();
+
+  const handleImpersonate = (sub: Sub) => {
+    impersonate(sub.id, sub.empresa);
+    push({ message: `Entrando como ${sub.empresa}...`, tone: "info" });
+    navigate("/admin/store", { replace: true });
+  };
+
   const filtered = useMemo(
     () =>
       list.filter(
@@ -34,7 +47,7 @@ export default function SubscriptionsPage() {
   );
 
   return (
-    <DashboardShell sidebar={<SuperAdminSidebar currentPath="/admin/super/subscriptions" />}>
+    <DashboardShell sidebar={<SuperAdminSidebar />}>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl font-semibold text-[#1F2937]">Assinaturas</h1>
         <div className="flex gap-2">
@@ -88,6 +101,12 @@ export default function SubscriptionsPage() {
                 </td>
                 <td className="p-3">{s.proxCobranca || "—"}</td>
                 <td className="p-3 text-right">
+                  <button
+                    onClick={() => handleImpersonate(s)}
+                    className="text-[#0EA5E9] hover:underline mr-3"
+                  >
+                    Entrar como empresa
+                  </button>
                   <button className="text-[#D22630] hover:underline mr-3">Alterar plano</button>
                   <button className="text-[#DC2626] hover:underline">Cancelar</button>
                 </td>

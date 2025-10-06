@@ -7,16 +7,28 @@ type AuthState = {
   token: string | null;
 };
 
+type ImpersonationState = {
+  active: boolean;
+  originalUser: AuthUser | null;
+};
+
 type AuthContextType = AuthState & {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setRole: (role: UserRole) => void;
+  impersonate: (empresaId: string, empresaName?: string) => void;
+  stopImpersonation: () => void;
+  isImpersonating: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({ isAuth: false, user: null, token: null });
+  const [impersonation, setImpersonation] = useState<ImpersonationState>({
+    active: false,
+    originalUser: null,
+  });
 
   useEffect(() => {
     const raw = localStorage.getItem("deliverei_auth");
@@ -57,13 +69,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState({ isAuth: true, user: mockUser, token: "mock-jwt-token" });
   };
 
-  const logout = () => setState({ isAuth: false, user: null, token: null });
+  const logout = () => {
+    setState({ isAuth: false, user: null, token: null });
+    setImpersonation({ active: false, originalUser: null });
+  };
 
   const setRole = (role: UserRole) => {
     setState((s) => (s.user ? { ...s, user: { ...s.user, role } } : s));
   };
 
-  const value = useMemo(() => ({ ...state, login, logout, setRole }), [state]);
+  const impersonate = (empresaId: string, empresaName = "Empresa") => {
+    if (!state.user) return;
+
+    setImpersonation({
+      active: true,
+      originalUser: state.user,
+    });
+
+    const impersonatedUser: AuthUser = {
+      id: "imp_" + empresaId,
+      name: empresaName,
+      email: `impersonate+${empresaId}@deliverei.com`,
+      role: "empresa",
+      empresaId,
+      lastLogin: new Date().toISOString(),
+    };
+
+    setState({ ...state, user: impersonatedUser });
+  };
+
+  const stopImpersonation = () => {
+    if (!impersonation.active || !impersonation.originalUser) return;
+
+    setState({ ...state, user: impersonation.originalUser });
+    setImpersonation({ active: false, originalUser: null });
+  };
+
+  const value = useMemo(
+    () => ({
+      ...state,
+      login,
+      logout,
+      setRole,
+      impersonate,
+      stopImpersonation,
+      isImpersonating: impersonation.active,
+    }),
+    [state, impersonation.active]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

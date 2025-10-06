@@ -19,6 +19,7 @@ import SuperDashboard from "../pages/admin/super/Dashboard";
 import Companies from "../pages/admin/super/Companies";
 import Subscriptions from "../pages/admin/super/Subscriptions";
 import Tickets from "../pages/admin/super/Tickets";
+import SuperSettings from "../pages/admin/super/Settings";
 
 import SupportLayout from "../pages/support/Layout";
 import SupportTickets from "../pages/support/Tickets";
@@ -106,6 +107,14 @@ export default function AppRouter() {
         element={
           <RequireAuth role="superadmin">
             <Tickets />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/super/settings"
+        element={
+          <RequireAuth role="superadmin">
+            <SuperSettings />
           </RequireAuth>
         }
       />

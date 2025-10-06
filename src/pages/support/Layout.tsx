@@ -1,6 +1,7 @@
 import React from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Ticket } from "lucide-react";
+import { Topbar } from "../../components/layout/Topbar";
 
 export default function SupportLayout() {
   return (
@@ -30,12 +31,7 @@ export default function SupportLayout() {
         </div>
       </aside>
       <div className="flex-1">
-        <div className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-white p-3">
-          <div className="mx-auto flex max-w-7xl items-center justify-between">
-            <div className="font-semibold text-[#1F2937]">Painel do Suporte</div>
-            <div className="text-sm text-[#4B5563]">Olá, Agente</div>
-          </div>
-        </div>
+        <Topbar />
         <main className="mx-auto max-w-7xl p-4">
           <Outlet />
         </main>
