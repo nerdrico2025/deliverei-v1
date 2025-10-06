@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { PublicHeader } from "../../components/layout/PublicHeader";
 import { Input } from "../../components/common/Input";
 import { Button } from "../../components/common/Button";
@@ -10,9 +10,30 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const { push } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const state = location.state as any;
+    if (state?.from) {
+      navigate(state.from, { replace: true });
+      return;
+    }
+
+    if (user.role === "superadmin") {
+      navigate("/admin/super", { replace: true });
+    } else if (user.role === "empresa") {
+      navigate("/admin/store", { replace: true });
+    } else if (user.role === "suporte") {
+      navigate("/support/tickets", { replace: true });
+    } else {
+      navigate("/storefront", { replace: true });
+    }
+  }, [user, navigate, location.state]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,20 +41,6 @@ export default function Login() {
     try {
       await login(email, password);
       push({ message: "Login realizado com sucesso!", tone: "success" });
-
-      const role = email.includes("+super")
-        ? "superadmin"
-        : email.includes("+suporte")
-        ? "suporte"
-        : "empresa";
-
-      if (role === "superadmin") {
-        navigate("/admin/super");
-      } else if (role === "suporte") {
-        navigate("/support/tickets");
-      } else {
-        navigate("/admin/store");
-      }
     } catch (error) {
       push({ message: "Erro ao fazer login. Tente novamente.", tone: "error" });
     } finally {
