@@ -23,17 +23,18 @@ export const CartDrawer: React.FC<{
         />
       )}
       <div
-        className={`fixed inset-y-0 right-0 z-50 w-full max-w-md transform bg-white shadow-2xl transition-transform duration-300 ${
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-md transform bg-white shadow-2xl transition-transform duration-300 flex flex-col ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
+        style={{ height: "100dvh" }}
       >
-        <div className="flex items-center justify-between border-b border-[#E5E7EB] p-4">
+        <div className="flex items-center justify-between border-b border-[#E5E7EB] p-4 flex-shrink-0">
           <h3 className="text-lg font-semibold text-[#1F2937]">Seu carrinho</h3>
           <button onClick={onClose} aria-label="Fechar" className="text-[#4B5563] hover:text-[#1F2937]">
             <X size={20} />
           </button>
         </div>
-        <div className="flex h-[calc(100%-140px)] flex-col overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
             <div className="text-center text-[#4B5563]">Seu carrinho está vazio.</div>
           ) : (
@@ -64,19 +65,21 @@ export const CartDrawer: React.FC<{
             ))
           )}
         </div>
-        <div className="border-t border-[#E5E7EB] p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-[#4B5563]">Subtotal</span>
-            <span className="font-semibold text-[#1F2937]">R$ {subtotal.toFixed(2)}</span>
+        <div className="sticky bottom-0 bg-white border-t border-[#E5E7EB] flex-shrink-0">
+          <div className="p-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+            <div className="mb-3 flex items-center justify-between text-sm">
+              <span className="text-[#4B5563]">Subtotal</span>
+              <span className="font-semibold text-[#111827]">R$ {subtotal.toFixed(2)}</span>
+            </div>
+            <Button
+              variant="primary"
+              onClick={onCheckout}
+              disabled={items.length === 0}
+              className="w-full h-12"
+            >
+              Ir para checkout
+            </Button>
           </div>
-          <Button
-            variant="primary"
-            onClick={onCheckout}
-            disabled={items.length === 0}
-            className="w-full"
-          >
-            Ir para checkout
-          </Button>
         </div>
       </div>
     </>
