@@ -1,16 +1,38 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
+import { Copy, ExternalLink } from "lucide-react";
+import { useToast } from "../../../ui/feedback/ToastContext";
 
 type Tab = "loja" | "pagamentos" | "integracoes" | "vitrine" | "promocoes";
 
 export default function StoreSettings() {
   const [tab, setTab] = useState<Tab>("loja");
+  const { push } = useToast();
+  const [slug, setSlug] = useState("");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("deliverei_store_slug");
+    if (saved) setSlug(saved);
+    else setSlug("minha-marmitaria");
+  }, []);
+
+  const storeUrl = `${window.location.origin}/loja/${slug || "minha-marmitaria"}`;
+
+  const saveStoreData = () => {
+    localStorage.setItem("deliverei_store_slug", slug || "minha-marmitaria");
+    push({ message: "Configurações da loja salvas!", tone: "success" });
+  };
+
+  const copyUrl = async () => {
+    await navigator.clipboard.writeText(storeUrl);
+    push({ message: "URL copiada!", tone: "success" });
+  };
 
   return (
-    <DashboardShell sidebar={<StoreSidebar currentPath="/admin/store/settings" />}>
+    <DashboardShell sidebar={<StoreSidebar />}>
       <h1 className="mb-4 text-xl font-semibold text-[#1F2937]">Configurações</h1>
       <div className="mb-4 flex flex-wrap gap-2">
         {[
@@ -35,16 +57,69 @@ export default function StoreSettings() {
       </div>
 
       {tab === "loja" && (
-        <section className="rounded-md border border-[#E5E7EB] bg-white p-4">
-          <h2 className="mb-3 text-lg font-semibold text-[#1F2937]">Dados da loja</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Input placeholder="Nome da loja" />
-            <Input placeholder="WhatsApp de contato" />
-            <Input placeholder="Slug da vitrine (ex: sua-loja)" />
-            <Input placeholder="Taxa de entrega padrão (R$)" type="number" step="0.01" />
+        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm space-y-6">
+          <div>
+            <h2 className="mb-4 text-lg font-semibold text-[#1F2937]">Dados da loja</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-[#4B5563]">Nome da loja</label>
+                <Input placeholder="Ex: Marmitaria do João" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-[#4B5563]">WhatsApp de contato</label>
+                <Input placeholder="(11) 99999-9999" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-[#4B5563]">Taxa de entrega padrão</label>
+                <Input placeholder="10.00" type="number" step="0.01" />
+              </div>
+            </div>
           </div>
-          <div className="mt-4">
-            <Button>Salvar</Button>
+
+          <div className="border-t border-[#E5E7EB] pt-6">
+            <h2 className="mb-4 text-lg font-semibold text-[#1F2937]">URL da Vitrine</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-[#4B5563]">Slug da vitrine</label>
+                <Input
+                  placeholder="sua-loja"
+                  value={slug}
+                  onChange={(e) =>
+                    setSlug(e.target.value.replace(/\s+/g, "-").toLowerCase())
+                  }
+                />
+                <p className="mt-1 text-xs text-[#6B7280]">
+                  Use letras minúsculas, números e hífens. Ex: minha-marmitaria
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-[#4B5563]">URL pública</label>
+                <div className="flex items-center gap-2">
+                  <Input value={storeUrl} readOnly className="flex-1" />
+                  <button
+                    type="button"
+                    onClick={copyUrl}
+                    className="flex items-center gap-1 rounded border border-[#E5E7EB] px-3 py-2 text-sm hover:bg-[#F9FAFB] transition"
+                    title="Copiar"
+                  >
+                    <Copy size={16} />
+                  </button>
+                  <a
+                    href={storeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 rounded bg-[#D22630] px-3 py-2 text-sm text-white hover:bg-[#B31E27] transition"
+                    title="Abrir"
+                  >
+                    <ExternalLink size={16} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={saveStoreData}>Salvar Configurações</Button>
           </div>
         </section>
       )}
