@@ -4,6 +4,13 @@ import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
 import { X } from "lucide-react";
 
+type OrderItem = {
+  productId: string;
+  nome: string;
+  qtd: number;
+  preco: number;
+};
+
 type Order = {
   id: string;
   cliente: string;
@@ -11,6 +18,7 @@ type Order = {
   pagamento: "pendente" | "aprovado" | "recusado" | "estornado";
   status: "recebido" | "aprovado" | "em_preparo" | "saiu_entrega" | "entregue" | "cancelado";
   criadoEm: string;
+  itens: OrderItem[];
 };
 
 const statusOptions: Order["status"][] = [
@@ -25,9 +33,39 @@ const statusOptions: Order["status"][] = [
 export default function OrdersPage() {
   const [filterStatus, setFilterStatus] = useState<"" | Order["status"]>("");
   const [orders, setOrders] = useState<Order[]>([
-    { id: "1001", cliente: "Maria Silva", total: 72.3, pagamento: "aprovado", status: "recebido", criadoEm: "2025-10-05 12:20" },
-    { id: "1002", cliente: "João Souza", total: 45.0, pagamento: "pendente", status: "em_preparo", criadoEm: "2025-10-05 12:30" },
-    { id: "1003", cliente: "Ana Costa", total: 56.8, pagamento: "aprovado", status: "saiu_entrega", criadoEm: "2025-10-05 11:45" },
+    {
+      id: "1001",
+      cliente: "Maria Silva",
+      total: 72.3,
+      pagamento: "aprovado",
+      status: "recebido",
+      criadoEm: "2025-10-05 12:20",
+      itens: [
+        { productId: "p1", nome: "Marmita Fit Frango", qtd: 2, preco: 29.9 },
+        { productId: "p2", nome: "Suco Detox", qtd: 1, preco: 12.5 },
+      ],
+    },
+    {
+      id: "1002",
+      cliente: "João Souza",
+      total: 45.0,
+      pagamento: "pendente",
+      status: "em_preparo",
+      criadoEm: "2025-10-05 12:30",
+      itens: [{ productId: "p3", nome: "Marmita Veggie", qtd: 1, preco: 45.0 }],
+    },
+    {
+      id: "1003",
+      cliente: "Ana Costa",
+      total: 56.8,
+      pagamento: "aprovado",
+      status: "saiu_entrega",
+      criadoEm: "2025-10-05 11:45",
+      itens: [
+        { productId: "p4", nome: "Marmita Tradicional", qtd: 2, preco: 22.5 },
+        { productId: "p5", nome: "Refrigerante", qtd: 2, preco: 5.9 },
+      ],
+    },
   ]);
   const [drawer, setDrawer] = useState<{ open: boolean; order?: Order }>({ open: false });
 
@@ -47,7 +85,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <DashboardShell sidebar={<StoreSidebar currentPath="/admin/store/orders" />}>
+    <DashboardShell sidebar={<StoreSidebar />}>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl font-semibold text-[#1F2937]">Pedidos</h1>
         <div className="flex gap-2">
@@ -118,19 +156,59 @@ export default function OrdersPage() {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-4 space-y-3 text-sm text-[#4B5563]">
+            <div className="p-4 space-y-4 text-sm text-[#4B5563]">
               <div>
                 <span className="font-medium text-[#1F2937]">Cliente:</span> {drawer.order.cliente}
               </div>
               <div>
-                <span className="font-medium text-[#1F2937]">Status:</span> {drawer.order.status}
+                <span className="font-medium text-[#1F2937]">Status:</span>{" "}
+                <span className="capitalize">{drawer.order.status}</span>
               </div>
               <div>
-                <span className="font-medium text-[#1F2937]">Pagamento:</span> {drawer.order.pagamento}
+                <span className="font-medium text-[#1F2937]">Pagamento:</span>{" "}
+                <span className="capitalize">{drawer.order.pagamento}</span>
               </div>
+
+              <div className="mt-4">
+                <div className="mb-2 font-medium text-[#1F2937]">Itens do pedido</div>
+                <div className="rounded border border-[#E5E7EB] overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#F9FAFB]">
+                      <tr>
+                        <th className="p-2 text-left text-xs">Produto</th>
+                        <th className="p-2 text-center text-xs">Qtd</th>
+                        <th className="p-2 text-right text-xs">Preço</th>
+                        <th className="p-2 text-right text-xs">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {drawer.order.itens.map((it) => (
+                        <tr key={it.productId} className="border-t">
+                          <td className="p-2">{it.nome}</td>
+                          <td className="p-2 text-center">{it.qtd}</td>
+                          <td className="p-2 text-right">R$ {it.preco.toFixed(2)}</td>
+                          <td className="p-2 text-right">R$ {(it.preco * it.qtd).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t bg-[#F9FAFB]">
+                        <td className="p-2 font-medium" colSpan={3}>
+                          Total
+                        </td>
+                        <td className="p-2 text-right font-semibold">
+                          R$ {drawer.order.total.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
               <div>
-                <span className="font-medium text-[#1F2937]">Total:</span> R$ {drawer.order.total.toFixed(2)}
+                <span className="font-medium text-[#1F2937]">Criado em:</span> {drawer.order.criadoEm}
               </div>
+
               <Button variant="secondary" className="w-full">
                 Reenviar confirmação
               </Button>

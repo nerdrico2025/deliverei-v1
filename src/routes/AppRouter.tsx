@@ -14,6 +14,8 @@ import Products from "../pages/admin/store/Products";
 import Orders from "../pages/admin/store/Orders";
 import Clients from "../pages/admin/store/Clients";
 import StoreSettings from "../pages/admin/store/Settings";
+import ClientEdit from "../pages/admin/store/ClientEdit";
+import ProductEdit from "../pages/admin/store/ProductEdit";
 
 import SuperDashboard from "../pages/admin/super/Dashboard";
 import Companies from "../pages/admin/super/Companies";
@@ -74,6 +76,22 @@ export default function AppRouter() {
         element={
           <RequireAuth role="empresa">
             <StoreSettings />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/store/clients/:id/edit"
+        element={
+          <RequireAuth role="empresa">
+            <ClientEdit />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/store/products/:id/edit"
+        element={
+          <RequireAuth role="empresa">
+            <ProductEdit />
           </RequireAuth>
         }
       />

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
@@ -8,6 +9,7 @@ import { X } from "lucide-react";
 type Product = { id: string; title: string; price: number; status: string };
 
 export default function ProductsPage() {
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const [list] = useState<Product[]>([
     { id: "1", title: "Marmita Fit", price: 24.9, status: "publicado" },
@@ -16,7 +18,7 @@ export default function ProductsPage() {
   ]);
 
   return (
-    <DashboardShell sidebar={<StoreSidebar currentPath="/admin/store/products" />}>
+    <DashboardShell sidebar={<StoreSidebar />}>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-[#1F2937]">Produtos</h1>
         <Button onClick={() => setModalOpen(true)}>Novo Produto</Button>
@@ -38,7 +40,12 @@ export default function ProductsPage() {
                 <td className="p-3">R$ {p.price.toFixed(2)}</td>
                 <td className="p-3 capitalize">{p.status}</td>
                 <td className="p-3 text-right">
-                  <button className="text-[#D22630] hover:underline">Editar</button>
+                  <button
+                    className="text-[#D22630] hover:underline"
+                    onClick={() => navigate(`/admin/store/products/${p.id}/edit`)}
+                  >
+                    Editar
+                  </button>
                   <span className="mx-2 text-[#E5E7EB]">|</span>
                   <button className="text-[#DC2626] hover:underline">Excluir</button>
                 </td>

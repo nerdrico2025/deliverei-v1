@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
@@ -16,6 +17,7 @@ type Client = {
 };
 
 export default function ClientsPage() {
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"" | "ativo" | "inativo">("");
   const [list] = useState<Client[]>([
@@ -34,7 +36,7 @@ export default function ClientsPage() {
   }, [list, q, status]);
 
   return (
-    <DashboardShell sidebar={<StoreSidebar currentPath="/admin/store/clients" />}>
+    <DashboardShell sidebar={<StoreSidebar />}>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl font-semibold text-[#1F2937]">Clientes</h1>
         <div className="flex gap-2">
@@ -80,7 +82,12 @@ export default function ClientsPage() {
                 <td className="p-3">{c.ultCompra || "—"}</td>
                 <td className="p-3">{c.ltv ? `R$ ${c.ltv.toFixed(2)}` : "—"}</td>
                 <td className="p-3 text-right">
-                  <button className="text-[#D22630] hover:underline mr-3">Editar</button>
+                  <button
+                    className="text-[#D22630] hover:underline mr-3"
+                    onClick={() => navigate(`/admin/store/clients/${c.id}/edit`)}
+                  >
+                    Editar
+                  </button>
                   <button className="text-[#DC2626] hover:underline">Desativar</button>
                 </td>
               </tr>
