@@ -21,10 +21,10 @@ export default function SuperSettings() {
 
   return (
     <DashboardShell sidebar={<SuperAdminSidebar />}>
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold text-[#1F2937]">Configurações do Sistema</h1>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold text-[#111827]">Configurações do Sistema</h1>
 
-        <Card>
+        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-[#1F2937]">Parâmetros Globais</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -69,14 +69,14 @@ export default function SuperSettings() {
               />
             </div>
           </div>
-          <div className="mt-6">
+          <div className="mt-5">
             <Button onClick={handleSave}>Salvar Configurações</Button>
           </div>
-        </Card>
+        </section>
 
-        <Card>
-          <h2 className="mb-4 text-lg font-semibold text-[#1F2937]">Informações do Sistema</h2>
-          <div className="grid gap-3 text-sm">
+        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
+          <h2 className="mb-3 text-lg font-semibold text-[#1F2937]">Informações do Sistema</h2>
+          <div className="grid gap-2 text-sm text-[#4B5563] md:grid-cols-2">
             <div className="flex justify-between">
               <span className="text-[#4B5563]">Versão do Sistema:</span>
               <span className="font-medium text-[#1F2937]">1.0.0</span>
@@ -90,7 +90,7 @@ export default function SuperSettings() {
               <span className="font-medium text-[#1F2937]">2025-10-06</span>
             </div>
           </div>
-        </Card>
+        </section>
       </div>
     </DashboardShell>
   );
