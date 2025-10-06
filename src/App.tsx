@@ -1,6 +1,8 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, RequireAuth } from "./components/auth/RequireAuth";
+import { AuthProvider } from "./auth/AuthContext";
+import { RequireAuth } from "./components/auth/RequireAuth";
+import { ToastProvider } from "./ui/feedback/ToastContext";
 
 import Home from "./pages/public/Home";
 import Login from "./pages/public/Login";
@@ -26,7 +28,8 @@ import SupportTickets from "./pages/support/Tickets";
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -127,6 +130,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }
