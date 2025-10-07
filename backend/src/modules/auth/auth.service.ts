@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../database/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { LoginDto, SignupDto } from './dto';
@@ -14,14 +14,11 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
-  private prisma: PrismaClient;
-
   constructor(
+    private readonly prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) {
-    this.prisma = new PrismaClient();
-  }
+  ) {}
 
   async validateUser(email: string, senha: string): Promise<any> {
     const usuario = await this.prisma.usuario.findUnique({
@@ -226,9 +223,5 @@ export class AuthService {
       default:
         return 7 * 24 * 60 * 60 * 1000;
     }
-  }
-
-  async onModuleDestroy() {
-    await this.prisma.$disconnect();
   }
 }
