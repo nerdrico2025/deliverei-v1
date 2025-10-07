@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN_EMPRESA
+  CLIENTE
+}
+
+enum StatusPedido {
+  PENDENTE
+  CONFIRMADO
+  EM_PREPARO
+  SAIU_ENTREGA
+  ENTREGUE
+  CANCELADO
+}
+
+model Empresa {
+  id         String   @id @default(uuid())
+  nome       String
+  slug       String   @unique
+  subdominio String   @unique
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  usuarios Usuario[]
+  produtos Produto[]
+  pedidos  Pedido[]
+
+  @@map("empresas")
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  senha     String
+  nome      String
+  role      Role     @default(CLIENTE)
+  empresaId String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  pedidos Pedido[]
+
+  @@index([empresaId])
+  @@map("usuarios")
+}
+
+model Produto {
+  id        String   @id @default(uuid())
+  nome      String
+  descricao String?
+  preco     Decimal  @db.Decimal(10, 2)
+  imagem    String?
+  ativo     Boolean  @default(true)
+  empresaId String
+  estoque   Int      @default(0)
+  categoria String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId])
+  @@index([ativo])
+  @@map("produtos")
+}
+
+model Pedido {
+  id          String        @id @default(uuid())
+  numero      String        @unique
+  status      StatusPedido  @default(PENDENTE)
+  total       Decimal       @db.Decimal(10, 2)
+  clienteId   String
+  empresaId   String
+  observacoes String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  cliente Usuario @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+  @@index([empresaId])
+  @@index([status])
+  @@map("pedidos")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  usuarioId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
