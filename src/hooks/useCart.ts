@@ -1,43 +1,37 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { safeStorage } from "../utils/safeStorage";
 
 export type CartItem = { id: string; title: string; price: number; qty: number };
 
 const CART_KEY = "deliverei:cart:v1";
 const LAST_ADDED_KEY = "deliverei:lastAddedId:v1";
 
+function parseJSON<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export function useCart() {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = localStorage.getItem(CART_KEY);
-      return raw ? (JSON.parse(raw) as CartItem[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState<CartItem[]>(() =>
+    parseJSON<CartItem[]>(safeStorage.get(CART_KEY), [])
+  );
 
   const [lastAddedId, setLastAddedId] = useState<string | undefined>(() => {
-    if (typeof window === "undefined") return undefined;
-    try {
-      return localStorage.getItem(LAST_ADDED_KEY) || undefined;
-    } catch {
-      return undefined;
-    }
+    const v = safeStorage.get(LAST_ADDED_KEY);
+    return v || undefined;
   });
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(CART_KEY, JSON.stringify(items));
-    } catch {}
+    safeStorage.set(CART_KEY, JSON.stringify(items));
   }, [items]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (lastAddedId) localStorage.setItem(LAST_ADDED_KEY, lastAddedId);
-      else localStorage.removeItem(LAST_ADDED_KEY);
-    } catch {}
+    if (lastAddedId) safeStorage.set(LAST_ADDED_KEY, lastAddedId);
+    else safeStorage.remove(LAST_ADDED_KEY);
   }, [lastAddedId]);
 
   const add = useCallback((item: Omit<CartItem, "qty">, qty = 1) => {
