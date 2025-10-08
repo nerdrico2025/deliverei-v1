@@ -26,19 +26,25 @@ enum StatusPedido {
 }
 
 model Empresa {
-  id         String   @id @default(uuid())
-  nome       String
-  slug       String   @unique
-  subdominio String   @unique
-  ativo      Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String   @id @default(uuid())
+  nome            String
+  slug            String   @unique
+  subdominio      String   @unique
+  ativo           Boolean  @default(true)
+  whatsappNumero  String?  @map("whatsapp_numero")
+  whatsappToken   String?  @map("whatsapp_token")
+  asaasCustomerId String?  @map("asaas_customer_id")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  usuarios  Usuario[]
-  produtos  Produto[]
-  pedidos   Pedido[]
-  carrinhos Carrinho[]
-  cupons    Cupom[]
+  usuarios          Usuario[]
+  produtos          Produto[]
+  pedidos           Pedido[]
+  carrinhos         Carrinho[]
+  cupons            Cupom[]
+  assinatura        Assinatura?
+  pagamentos        Pagamento[]
+  mensagensWhatsApp MensagemWhatsApp[]
 
   @@map("empresas")
 }
@@ -104,11 +110,13 @@ model Pedido {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  cliente      Usuario        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  empresa      Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  itens        ItemPedido[]
-  avaliacoes   Avaliacao[]
-  notificacoes Notificacao[]
+  cliente           Usuario            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  empresa           Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itens             ItemPedido[]
+  avaliacoes        Avaliacao[]
+  notificacoes      Notificacao[]
+  pagamentos        Pagamento[]
+  mensagensWhatsApp MensagemWhatsApp[]
 
   @@index([clienteId])
   @@index([empresaId])
@@ -239,4 +247,90 @@ model Notificacao {
   @@index([usuarioId])
   @@index([pedidoId])
   @@map("notificacoes")
+}
+
+model Assinatura {
+  id                   String    @id @default(uuid())
+  empresaId            String    @unique @map("empresa_id")
+  empresa              Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  plano                String    // BASICO, PROFISSIONAL, ENTERPRISE
+  status               String    // ATIVA, CANCELADA, SUSPENSA, TRIAL
+  stripeCustomerId     String?   @map("stripe_customer_id")
+  stripeSubscriptionId String?   @map("stripe_subscription_id")
+  dataInicio           DateTime  @map("data_inicio")
+  dataFim              DateTime? @map("data_fim")
+  valorMensal          Float     @map("valor_mensal")
+  proximaCobranca      DateTime? @map("proxima_cobranca")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  pagamentos Pagamento[]
+
+  @@index([empresaId])
+  @@index([status])
+  @@map("assinaturas")
+}
+
+model Pagamento {
+  id              String       @id @default(uuid())
+  empresaId       String       @map("empresa_id")
+  empresa         Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  assinaturaId    String?      @map("assinatura_id")
+  assinatura      Assinatura?  @relation(fields: [assinaturaId], references: [id], onDelete: SetNull)
+  pedidoId        String?      @map("pedido_id")
+  pedido          Pedido?      @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+  tipo            String       // ASSINATURA, PEDIDO
+  metodo          String       // PIX, CARTAO, BOLETO
+  status          String       // PENDENTE, APROVADO, RECUSADO, CANCELADO
+  valor           Float
+  asaasPaymentId  String?      @map("asaas_payment_id")
+  asaasInvoiceUrl String?      @map("asaas_invoice_url")
+  pixQrCode       String?      @map("pix_qr_code")
+  pixCopyPaste    String?      @map("pix_copy_paste")
+  boletoUrl       String?      @map("boleto_url")
+  dataVencimento  DateTime?    @map("data_vencimento")
+  dataPagamento   DateTime?    @map("data_pagamento")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@index([empresaId])
+  @@index([assinaturaId])
+  @@index([pedidoId])
+  @@index([status])
+  @@map("pagamentos")
+}
+
+model WebhookLog {
+  id         String   @id @default(uuid())
+  origem     String   // STRIPE, ASAAS
+  evento     String
+  payload    Json
+  processado Boolean  @default(false)
+  erro       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([origem])
+  @@index([processado])
+  @@map("webhook_logs")
+}
+
+model MensagemWhatsApp {
+  id         String   @id @default(uuid())
+  empresaId  String   @map("empresa_id")
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  pedidoId   String?  @map("pedido_id")
+  pedido     Pedido?  @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+  telefone   String
+  mensagem   String
+  tipo       String   // NOTIFICACAO, CHAT
+  direcao    String   // ENVIADA, RECEBIDA
+  status     String   // PENDENTE, ENVIADA, ENTREGUE, LIDA, ERRO
+  whatsappId String?  @map("whatsapp_id")
+  erro       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([empresaId])
+  @@index([pedidoId])
+  @@index([status])
+  @@map("mensagens_whatsapp")
 }
