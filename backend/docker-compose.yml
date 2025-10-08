@@ -1,20 +1,22 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: deliverei-postgres
-    restart: unless-stopped
-    ports:
-      - '5432:5432'
-    environment:
-      POSTGRES_USER: deliverei
-      POSTGRES_PASSWORD: deliverei123
-      POSTGRES_DB: deliverei
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - deliverei-network
+  # PostgreSQL local comentado - Agora usando Supabase
+  # Descomente apenas se precisar de um banco local para testes
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: deliverei-postgres
+  #   restart: unless-stopped
+  #   ports:
+  #     - '5432:5432'
+  #   environment:
+  #     POSTGRES_USER: deliverei
+  #     POSTGRES_PASSWORD: deliverei123
+  #     POSTGRES_DB: deliverei
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - deliverei-network
 
   redis:
     image: redis:7-alpine
@@ -28,8 +30,8 @@ services:
       - deliverei-network
 
 volumes:
-  postgres_data:
-    driver: local
+  # postgres_data:
+  #   driver: local
   redis_data:
     driver: local
 

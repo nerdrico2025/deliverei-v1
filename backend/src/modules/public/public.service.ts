@@ -1,13 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
 export class PublicService {
-  private prisma: PrismaClient;
-
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   async getLojaBySlug(slug: string) {
     const empresa = await this.prisma.empresa.findUnique({
@@ -114,9 +110,5 @@ export class PublicService {
     return categorias
       .filter((c) => c.categoria)
       .map((c) => c.categoria);
-  }
-
-  async onModuleDestroy() {
-    await this.prisma.$disconnect();
   }
 }

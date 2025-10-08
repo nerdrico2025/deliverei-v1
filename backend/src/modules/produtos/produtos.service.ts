@@ -3,16 +3,12 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '../../database/prisma.service';
 import { CreateProdutoDto, UpdateProdutoDto } from './dto';
 
 @Injectable()
 export class ProdutosService {
-  private prisma: PrismaClient;
-
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createProdutoDto: CreateProdutoDto, empresaId: string) {
     return this.prisma.produto.create({
@@ -121,9 +117,5 @@ export class ProdutosService {
     return this.prisma.produto.delete({
       where: { id },
     });
-  }
-
-  async onModuleDestroy() {
-    await this.prisma.$disconnect();
   }
 }
