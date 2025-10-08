@@ -7,34 +7,46 @@ export class TenantMiddleware implements NestMiddleware {
   constructor(private readonly prisma: PrismaService) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    // Extrair host do request
-    const host = req.get('host') || req.hostname;
+    // Primeiro, tentar obter o tenant do header (útil para desenvolvimento e APIs)
+    const tenantSlug = req.get('x-tenant-slug');
     
-    // Extrair subdomínio
-    // Exemplo: pizza-express.deliverei.com.br -> pizza-express
-    // Ou em desenvolvimento: localhost:3000 -> null
-    const subdomain = this.extractSubdomain(host);
+    let empresa;
+    
+    if (tenantSlug) {
+      // Buscar empresa pelo slug do header
+      empresa = await this.prisma.empresa.findUnique({
+        where: { slug: tenantSlug },
+      });
+    } else {
+      // Extrair host do request
+      const host = req.get('host') || req.hostname;
+      
+      // Extrair subdomínio
+      // Exemplo: pizza-express.deliverei.com.br -> pizza-express
+      // Ou em desenvolvimento: localhost:3000 -> null
+      const subdomain = this.extractSubdomain(host);
 
-    // Se não há subdomínio (acesso direto ao domínio base), pular
-    if (!subdomain) {
-      return next();
+      // Se não há subdomínio (acesso direto ao domínio base), pular
+      if (!subdomain) {
+        return next();
+      }
+
+      // Buscar empresa pelo subdomínio
+      empresa = await this.prisma.empresa.findUnique({
+        where: { subdominio: subdomain },
+      });
     }
 
-    // Buscar empresa pelo subdomínio
-    const empresa = await this.prisma.empresa.findUnique({
-      where: { subdominio: subdomain },
-    });
-
     if (!empresa) {
-      throw new NotFoundException(`Loja "${subdomain}" não encontrada`);
+      throw new NotFoundException(`Loja não encontrada`);
     }
 
     if (!empresa.ativo) {
-      throw new NotFoundException(`Loja "${subdomain}" está inativa`);
+      throw new NotFoundException(`Loja está inativa`);
     }
 
     // Injetar empresa no request
-    req['empresa'] = empresa;
+    req['empresa'] = empresa.id;
     req['empresaId'] = empresa.id;
 
     next();
