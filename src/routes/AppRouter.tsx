@@ -38,6 +38,15 @@ import { Cupons as AdminCupons } from "../pages/admin/Cupons";
 import { MeusPedidos } from "../pages/cliente/MeusPedidos";
 import { MinhasAvaliacoes } from "../pages/cliente/MinhasAvaliacoes";
 
+// FASE 4 - Novos imports
+import { Planos } from "../pages/assinaturas/Planos";
+import { CheckoutAssinatura } from "../pages/assinaturas/CheckoutAssinatura";
+import { MinhaAssinatura } from "../pages/assinaturas/MinhaAssinatura";
+import { HistoricoPagamentos } from "../pages/pagamentos/HistoricoPagamentos";
+import { DetalhesPagamento } from "../pages/pagamentos/DetalhesPagamento";
+import { ConfiguracaoWhatsApp } from "../pages/admin/ConfiguracaoWhatsApp";
+import { Webhooks } from "../pages/admin/Webhooks";
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -197,6 +206,61 @@ export default function AppRouter() {
         element={
           <RequireAuth>
             <MinhasAvaliacoes />
+          </RequireAuth>
+        }
+      />
+
+      {/* FASE 4 - Rotas de Assinaturas */}
+      <Route path="/assinaturas/planos" element={<Planos />} />
+      <Route
+        path="/assinaturas/checkout/:planoId"
+        element={
+          <RequireAuth role="empresa">
+            <CheckoutAssinatura />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/assinaturas/minha"
+        element={
+          <RequireAuth role="empresa">
+            <MinhaAssinatura />
+          </RequireAuth>
+        }
+      />
+
+      {/* FASE 4 - Rotas de Pagamentos */}
+      <Route
+        path="/pagamentos"
+        element={
+          <RequireAuth>
+            <HistoricoPagamentos />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/pagamentos/:id"
+        element={
+          <RequireAuth>
+            <DetalhesPagamento />
+          </RequireAuth>
+        }
+      />
+
+      {/* FASE 4 - Rotas Admin (WhatsApp e Webhooks) */}
+      <Route
+        path="/admin/whatsapp"
+        element={
+          <RequireAuth role="empresa">
+            <ConfiguracaoWhatsApp />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/webhooks"
+        element={
+          <RequireAuth role="empresa">
+            <Webhooks />
           </RequireAuth>
         }
       />
