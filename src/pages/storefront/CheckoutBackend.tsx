@@ -5,8 +5,9 @@ import { StorefrontHeader } from "../../components/layout/StorefrontHeader";
 import { Input } from "../../components/common/Input";
 import { Button } from "../../components/common/Button";
 import { useCartContext } from "../../contexts/CartContext";
-import { carrinhoApi } from "../../services/backendApi";
+import { carrinhoApi, cuponsApi } from "../../services/backendApi";
 import { useToast } from "../../ui/feedback/ToastContext";
+import { Tag, Check, X } from "lucide-react";
 
 const FORMAS_PAGAMENTO = [
   { value: 'DINHEIRO', label: 'Dinheiro' },
@@ -21,6 +22,8 @@ export default function CheckoutBackend() {
   const { push } = useToast();
 
   const [loading, setLoading] = useState(false);
+  const [cupomAplicado, setCupomAplicado] = useState<{ codigo: string; desconto: number } | null>(null);
+  const [validandoCupom, setValidandoCupom] = useState(false);
   const [formData, setFormData] = useState({
     rua: '',
     numero: '',
@@ -44,6 +47,42 @@ export default function CheckoutBackend() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleValidarCupom = async () => {
+    if (!formData.cupomDesconto.trim()) {
+      push({ message: 'Digite um código de cupom', tone: 'warning' });
+      return;
+    }
+
+    try {
+      setValidandoCupom(true);
+      const response = await cuponsApi.validar(formData.cupomDesconto);
+      
+      if (response.valido && response.cupom) {
+        const desconto = response.cupom.tipo === 'PERCENTUAL'
+          ? (cart!.subtotal * response.cupom.valor) / 100
+          : response.cupom.valor;
+        
+        setCupomAplicado({
+          codigo: response.cupom.codigo,
+          desconto: Math.min(desconto, cart!.subtotal),
+        });
+        push({ message: 'Cupom aplicado com sucesso!', tone: 'success' });
+      } else {
+        push({ message: response.mensagem || 'Cupom inválido', tone: 'error' });
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || 'Erro ao validar cupom';
+      push({ message: errorMsg, tone: 'error' });
+    } finally {
+      setValidandoCupom(false);
+    }
+  };
+
+  const handleRemoverCupom = () => {
+    setCupomAplicado(null);
+    setFormData(prev => ({ ...prev, cupomDesconto: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -202,12 +241,45 @@ export default function CheckoutBackend() {
                     <label className="mb-1 block text-sm text-[#4B5563]">
                       Cupom de Desconto (opcional)
                     </label>
-                    <Input
-                      name="cupomDesconto"
-                      value={formData.cupomDesconto}
-                      onChange={handleChange}
-                      placeholder="Digite o código do cupom"
-                    />
+                    {cupomAplicado ? (
+                      <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <Check className="w-5 h-5 text-green-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-green-900">
+                            Cupom {cupomAplicado.codigo} aplicado
+                          </p>
+                          <p className="text-xs text-green-700">
+                            Desconto: R$ {cupomAplicado.desconto.toFixed(2)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoverCupom}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          name="cupomDesconto"
+                          value={formData.cupomDesconto}
+                          onChange={handleChange}
+                          placeholder="Digite o código do cupom"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleValidarCupom}
+                          loading={validandoCupom}
+                          variant="secondary"
+                          className="whitespace-nowrap"
+                        >
+                          <Tag className="w-4 h-4 mr-2" />
+                          Aplicar
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="mb-1 block text-sm text-[#4B5563]">
@@ -259,17 +331,19 @@ export default function CheckoutBackend() {
                   <span className="text-[#6B7280]">Subtotal</span>
                   <span className="font-medium">R$ {cart.subtotal.toFixed(2)}</span>
                 </div>
-                {cart.desconto && cart.desconto > 0 && (
+                {cupomAplicado && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#6B7280]">Desconto</span>
+                    <span className="text-[#6B7280]">Desconto (Cupom)</span>
                     <span className="font-medium text-green-600">
-                      -R$ {cart.desconto.toFixed(2)}
+                      -R$ {cupomAplicado.desconto.toFixed(2)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between text-lg font-semibold pt-2 border-t border-[#E5E7EB]">
                   <span>Total</span>
-                  <span className="text-[#D22630]">R$ {cart.total.toFixed(2)}</span>
+                  <span className="text-[#D22630]">
+                    R$ {(cart.subtotal - (cupomAplicado?.desconto || 0)).toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
