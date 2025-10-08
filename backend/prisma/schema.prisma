@@ -38,6 +38,7 @@ model Empresa {
   produtos  Produto[]
   pedidos   Pedido[]
   carrinhos Carrinho[]
+  cupons    Cupom[]
 
   @@map("empresas")
 }
@@ -53,9 +54,11 @@ model Usuario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  empresa  Empresa?   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  pedidos  Pedido[]
-  carrinho Carrinho?
+  empresa      Empresa?       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  pedidos      Pedido[]
+  carrinho     Carrinho?
+  avaliacoes   Avaliacao[]
+  notificacoes Notificacao[]
 
   @@index([empresaId])
   @@map("usuarios")
@@ -74,9 +77,10 @@ model Produto {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  empresa      Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa       Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   itensCarrinho ItemCarrinho[]
-  itensPedido  ItemPedido[]
+  itensPedido   ItemPedido[]
+  avaliacoes    Avaliacao[]
 
   @@index([empresaId])
   @@index([ativo])
@@ -90,6 +94,7 @@ model Pedido {
   subtotal         Decimal       @db.Decimal(10, 2)
   desconto         Decimal       @default(0) @db.Decimal(10, 2)
   total            Decimal       @db.Decimal(10, 2)
+  frete            Decimal       @default(0) @db.Decimal(10, 2)
   clienteId        String
   empresaId        String
   enderecoEntrega  String?
@@ -99,9 +104,11 @@ model Pedido {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  cliente     Usuario      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  empresa     Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  itens       ItemPedido[]
+  cliente      Usuario        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  empresa      Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itens        ItemPedido[]
+  avaliacoes   Avaliacao[]
+  notificacoes Notificacao[]
 
   @@index([clienteId])
   @@index([empresaId])
@@ -172,4 +179,64 @@ model ItemPedido {
   @@index([pedidoId])
   @@index([produtoId])
   @@map("itens_pedido")
+}
+
+model Cupom {
+  id          String   @id @default(uuid())
+  codigo      String   @unique
+  descricao   String?
+  tipo        String   // PERCENTUAL, VALOR_FIXO
+  valor       Decimal  @db.Decimal(10, 2)
+  valorMinimo Decimal? @map("valor_minimo") @db.Decimal(10, 2)
+  dataInicio  DateTime @map("data_inicio")
+  dataFim     DateTime @map("data_fim")
+  ativo       Boolean  @default(true)
+  usoMaximo   Int?     @map("uso_maximo")
+  usoAtual    Int      @default(0) @map("uso_atual")
+  empresaId   String   @map("empresa_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId])
+  @@index([codigo])
+  @@map("cupons")
+}
+
+model Avaliacao {
+  id         String   @id @default(uuid())
+  nota       Int      // 1-5
+  comentario String?
+  produtoId  String   @map("produto_id")
+  usuarioId  String   @map("usuario_id")
+  pedidoId   String?  @map("pedido_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  produto Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  pedido  Pedido?  @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+
+  @@index([produtoId])
+  @@index([usuarioId])
+  @@index([pedidoId])
+  @@map("avaliacoes")
+}
+
+model Notificacao {
+  id        String   @id @default(uuid())
+  titulo    String
+  mensagem  String
+  tipo      String   // PEDIDO, SISTEMA, PROMOCAO
+  lida      Boolean  @default(false)
+  usuarioId String   @map("usuario_id")
+  pedidoId  String?  @map("pedido_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  pedido  Pedido? @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@index([pedidoId])
+  @@map("notificacoes")
 }

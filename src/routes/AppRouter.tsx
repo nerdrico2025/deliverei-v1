@@ -4,10 +4,14 @@ import { RequireAuth } from "../components/auth/RequireAuth";
 
 import Home from "../pages/public/Home";
 import Login from "../pages/public/Login";
+import LoginBackend from "../pages/public/LoginBackend";
 
 import Vitrine from "../pages/storefront/Vitrine";
 import Checkout from "../pages/storefront/Checkout";
 import OrderConfirmation from "../pages/storefront/OrderConfirmation";
+import VitrineBackend from "../pages/storefront/VitrineBackend";
+import CheckoutBackend from "../pages/storefront/CheckoutBackend";
+import OrderConfirmationBackend from "../pages/storefront/OrderConfirmationBackend";
 
 import StoreDashboard from "../pages/admin/store/Dashboard";
 import Products from "../pages/admin/store/Products";
@@ -31,10 +35,17 @@ export default function AppRouter() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/login-backend" element={<LoginBackend />} />
 
+      {/* Mock routes (original) */}
       <Route path="/storefront" element={<Vitrine />} />
       <Route path="/storefront/checkout" element={<Checkout />} />
       <Route path="/storefront/order-confirmation" element={<OrderConfirmation />} />
+
+      {/* Backend integrated routes */}
+      <Route path="/storefront-backend" element={<VitrineBackend />} />
+      <Route path="/storefront/checkout-backend" element={<CheckoutBackend />} />
+      <Route path="/storefront/order-confirmation-backend" element={<OrderConfirmationBackend />} />
 
       <Route path="/loja/:slug" element={<Vitrine />} />
       <Route path="/loja/:slug/checkout" element={<Checkout />} />
