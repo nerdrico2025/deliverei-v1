@@ -5,6 +5,7 @@ import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProdutosModule } from './modules/produtos/produtos.module';
 import { PublicModule } from './modules/public/public.module';
+import { CarrinhoModule } from './modules/carrinho/carrinho.module';
 import { TenantMiddleware } from './middleware/tenant.middleware';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 import { AppController } from './app.controller';
@@ -20,6 +21,7 @@ import { AppService } from './app.service';
     AuthModule,
     ProdutosModule,
     PublicModule,
+    CarrinhoModule,
   ],
   controllers: [AppController],
   providers: [

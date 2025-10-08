@@ -1,0 +1,1 @@
+{"statusCode":401,"timestamp":"2025-10-08T16:05:02.766Z","path":"/api/auth/signup","error":"UnauthorizedException","message":"Unauthorized"}
