@@ -34,9 +34,10 @@ model Empresa {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  usuarios Usuario[]
-  produtos Produto[]
-  pedidos  Pedido[]
+  usuarios  Usuario[]
+  produtos  Produto[]
+  pedidos   Pedido[]
+  carrinhos Carrinho[]
 
   @@map("empresas")
 }
@@ -52,8 +53,9 @@ model Usuario {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  empresa Empresa? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  pedidos Pedido[]
+  empresa  Empresa?   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  pedidos  Pedido[]
+  carrinho Carrinho?
 
   @@index([empresaId])
   @@map("usuarios")
@@ -72,7 +74,9 @@ model Produto {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa      Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itensCarrinho ItemCarrinho[]
+  itensPedido  ItemPedido[]
 
   @@index([empresaId])
   @@index([ativo])
@@ -80,18 +84,24 @@ model Produto {
 }
 
 model Pedido {
-  id          String        @id @default(uuid())
-  numero      String        @unique
-  status      StatusPedido  @default(PENDENTE)
-  total       Decimal       @db.Decimal(10, 2)
-  clienteId   String
-  empresaId   String
-  observacoes String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id               String        @id @default(uuid())
+  numero           String        @unique
+  status           StatusPedido  @default(PENDENTE)
+  subtotal         Decimal       @db.Decimal(10, 2)
+  desconto         Decimal       @default(0) @db.Decimal(10, 2)
+  total            Decimal       @db.Decimal(10, 2)
+  clienteId        String
+  empresaId        String
+  enderecoEntrega  String?
+  formaPagamento   String?
+  cupomDesconto    String?
+  observacoes      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  cliente Usuario @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cliente     Usuario      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  empresa     Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itens       ItemPedido[]
 
   @@index([clienteId])
   @@index([empresaId])
@@ -109,4 +119,57 @@ model RefreshToken {
   @@index([usuarioId])
   @@index([token])
   @@map("refresh_tokens")
+}
+
+model Carrinho {
+  id        String   @id @default(uuid())
+  usuarioId String   @unique
+  empresaId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuario Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itens   ItemCarrinho[]
+
+  @@index([usuarioId])
+  @@index([empresaId])
+  @@map("carrinhos")
+}
+
+model ItemCarrinho {
+  id            String   @id @default(uuid())
+  carrinhoId    String
+  produtoId     String
+  quantidade    Int      @default(1)
+  precoUnitario Decimal  @db.Decimal(10, 2)
+  observacoes   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  carrinho Carrinho @relation(fields: [carrinhoId], references: [id], onDelete: Cascade)
+  produto  Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@index([carrinhoId])
+  @@index([produtoId])
+  @@map("itens_carrinho")
+}
+
+model ItemPedido {
+  id            String   @id @default(uuid())
+  pedidoId      String
+  produtoId     String
+  quantidade    Int
+  precoUnitario Decimal  @db.Decimal(10, 2)
+  subtotal      Decimal  @db.Decimal(10, 2)
+  observacoes   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pedido  Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+  @@index([produtoId])
+  @@map("itens_pedido")
 }
