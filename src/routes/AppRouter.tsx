@@ -30,6 +30,14 @@ import SuperSettings from "../pages/admin/super/Settings";
 import SupportLayout from "../pages/support/Layout";
 import SupportTickets from "../pages/support/Tickets";
 
+// FASE 3 - Novos imports
+import { AdminLayout } from "../layouts/AdminLayout";
+import { Dashboard as AdminDashboard } from "../pages/admin/Dashboard";
+import { Pedidos as AdminPedidos } from "../pages/admin/Pedidos";
+import { Cupons as AdminCupons } from "../pages/admin/Cupons";
+import { MeusPedidos } from "../pages/cliente/MeusPedidos";
+import { MinhasAvaliacoes } from "../pages/cliente/MinhasAvaliacoes";
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -159,6 +167,39 @@ export default function AppRouter() {
         <Route index element={<Navigate to="tickets" replace />} />
         <Route path="tickets" element={<SupportTickets />} />
       </Route>
+
+      {/* FASE 3 - Rotas Admin com novo layout */}
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth role="empresa">
+            <AdminLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="pedidos" element={<AdminPedidos />} />
+        <Route path="cupons" element={<AdminCupons />} />
+      </Route>
+
+      {/* FASE 3 - Rotas Cliente */}
+      <Route
+        path="/meus-pedidos"
+        element={
+          <RequireAuth>
+            <MeusPedidos />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/minhas-avaliacoes"
+        element={
+          <RequireAuth>
+            <MinhasAvaliacoes />
+          </RequireAuth>
+        }
+      />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
