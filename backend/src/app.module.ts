@@ -15,6 +15,10 @@ import { AvaliacoesModule } from './avaliacoes/avaliacoes.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PedidosModule } from './pedidos/pedidos.module';
+import { AssinaturasModule } from './modules/assinaturas/assinaturas.module';
+import { PagamentosModule } from './modules/pagamentos/pagamentos.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -32,6 +36,10 @@ import { PedidosModule } from './pedidos/pedidos.module';
     NotificacoesModule,
     DashboardModule,
     PedidosModule,
+    AssinaturasModule,
+    PagamentosModule,
+    WhatsappModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [

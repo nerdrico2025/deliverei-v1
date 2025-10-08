@@ -4,12 +4,14 @@ import { PrismaService } from '../database/prisma.service';
 import { UpdateStatusPedidoDto } from './dto/update-status-pedido.dto';
 import { FiltrarPedidosDto } from './dto/filtrar-pedidos.dto';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { WhatsappService } from '../modules/whatsapp/whatsapp.service';
 
 @Injectable()
 export class PedidosService {
   constructor(
     private prisma: PrismaService,
     private notificacoesService: NotificacoesService,
+    private whatsappService: WhatsappService,
   ) {}
 
   async findAll(filtros: FiltrarPedidosDto, empresaId: string) {
@@ -192,6 +194,22 @@ export class PedidosService {
       pedido.numero,
       updateStatusDto.status,
     );
+
+    // Enviar notificação via WhatsApp
+    try {
+      // Buscar telefone do cliente (assumindo que está no endereço ou em outro campo)
+      // Por enquanto, vamos usar um telefone de exemplo
+      const telefone = '5511999999999'; // TODO: Buscar telefone real do cliente
+      await this.whatsappService.enviarNotificacaoPedido(
+        empresaId,
+        pedido.id,
+        updateStatusDto.status,
+        telefone,
+      );
+    } catch (error) {
+      // Não falhar se o WhatsApp não estiver configurado
+      console.error('Erro ao enviar WhatsApp:', error.message);
+    }
 
     return pedidoAtualizado;
   }
