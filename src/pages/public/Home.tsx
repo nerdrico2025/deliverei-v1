@@ -16,13 +16,16 @@ export default function Home() {
               Crie sua vitrine, receba pedidos e automatize o WhatsApp com poucos cliques.
             </p>
             <div className="flex gap-3">
-              <a href="/signup">
-                <Button variant="primary">Começar agora</Button>
+              <a href="/login-backend">
+                <Button variant="primary">Testar com Backend Real</Button>
               </a>
-              <a href="#pricing">
-                <Button variant="secondary">Ver planos</Button>
+              <a href="/login">
+                <Button variant="secondary">Login Mock</Button>
               </a>
             </div>
+            <p className="mt-4 text-sm text-[#6B7280]">
+              🚀 Novo: Integração completa com backend API disponível!
+            </p>
           </div>
           <div className="rounded-md border border-[#E5E7EB] bg-white p-6 shadow-sm">
             <div className="h-48 w-full rounded bg-[#D22630]/10" />
