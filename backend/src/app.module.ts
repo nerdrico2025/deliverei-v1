@@ -10,6 +10,11 @@ import { TenantMiddleware } from './middleware/tenant.middleware';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { CuponsModule } from './cupons/cupons.module';
+import { AvaliacoesModule } from './avaliacoes/avaliacoes.module';
+import { NotificacoesModule } from './notificacoes/notificacoes.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { PedidosModule } from './pedidos/pedidos.module';
 
 @Module({
   imports: [
@@ -22,6 +27,11 @@ import { AppService } from './app.service';
     ProdutosModule,
     PublicModule,
     CarrinhoModule,
+    CuponsModule,
+    AvaliacoesModule,
+    NotificacoesModule,
+    DashboardModule,
+    PedidosModule,
   ],
   controllers: [AppController],
   providers: [
