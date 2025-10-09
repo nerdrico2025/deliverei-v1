@@ -576,3 +576,6 @@ export const backendApi = {
   whatsapp: whatsappApi,
   webhooks: webhooksApi,
 };
+
+// Export individual APIs for direct imports
+export { carrinhoApi };
