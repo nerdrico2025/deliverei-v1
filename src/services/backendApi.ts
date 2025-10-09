@@ -167,6 +167,23 @@ export interface Pedido {
   atualizadoEm: string;
 }
 
+export interface PedidosFiltros {
+  status?: string;
+  limit?: number;
+  offset?: number;
+  page?: number;
+}
+
+export interface CupomCreateRequest {
+  codigo: string;
+  tipo: 'PERCENTUAL' | 'VALOR_FIXO';
+  valor: number;
+  dataInicio: string;
+  dataFim: string;
+  usoMaximo?: number;
+  ativo: boolean;
+}
+
 export interface DashboardEstatisticas {
   totalVendas: number;
   totalPedidos: number;
@@ -578,4 +595,4 @@ export const backendApi = {
 };
 
 // Export individual APIs for direct imports
-export { carrinhoApi };
+export { carrinhoApi, authApi, produtosApi, cuponsApi, avaliacoesApi, notificacoesApi, pedidosApi, dashboardApi, assinaturasApi, pagamentosApi, whatsappApi, webhooksApi };
