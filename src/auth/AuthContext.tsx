@@ -97,7 +97,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("deliverei_store_slug", empresaId);
     }
 
-    setState({ isAuth: true, user: mockUser, token: "mock-jwt-token" });
+    const newState = { isAuth: true, user: mockUser, token: "mock-jwt-token" };
+    
+    // CRITICAL: Set state AND localStorage synchronously before any navigation
+    // This ensures auth state is immediately available for redirect logic
+    setState(newState);
+    localStorage.setItem("deliverei_auth", JSON.stringify(newState));
   };
 
   const logout = () => {
