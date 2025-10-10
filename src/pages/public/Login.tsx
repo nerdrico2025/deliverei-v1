@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { PublicHeader } from "../../components/layout/PublicHeader";
 import { Input } from "../../components/common/Input";
 import { Button } from "../../components/common/Button";
@@ -50,6 +51,9 @@ export default function Login() {
 
   return (
     <>
+      <Helmet>
+        <title>Deliverei | Login</title>
+      </Helmet>
       <PublicHeader />
       <div className="mx-auto grid max-w-md gap-4 px-4 py-12">
         <div className="rounded-md border border-[#E5E7EB] bg-white p-6 shadow-sm">
@@ -83,10 +87,11 @@ export default function Login() {
             </Button>
           </form>
           <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-            <div className="font-semibold mb-1">Teste os perfis:</div>
-            <div>• Empresa: qualquer@email.com</div>
-            <div>• SuperAdmin: admin+super@email.com</div>
-            <div>• Suporte: agente+suporte@email.com</div>
+            <div className="font-semibold mb-1">Credenciais de teste:</div>
+            <div>• Super Admin: admin@deliverei.com.br / admin123</div>
+            <div>• Pizza Express: admin@pizza-express.com / pizza123</div>
+            <div>• Burger King: admin@burger-king.com / pizza123</div>
+            <div>• Cliente: cliente@exemplo.com / cliente123</div>
           </div>
         </div>
       </div>

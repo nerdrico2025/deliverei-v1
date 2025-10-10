@@ -1,14 +1,17 @@
 import React, { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { TrendingUp, ShoppingBag, DollarSign, AlertTriangle, ExternalLink, Copy, Eye, X } from "lucide-react";
 import { Input } from "../../../components/common/Input";
 import { useToast } from "../../../ui/feedback/ToastContext";
+import { useAuth } from "../../../auth/AuthContext";
 
-const getStoreSlug = () => (localStorage.getItem("deliverei_store_slug") || "minha-marmitaria").trim();
+const getStoreSlug = () => (localStorage.getItem("deliverei_store_slug") || "minha-loja").trim();
 const getStoreUrl = () => `${window.location.origin}/loja/${getStoreSlug()}`;
 
 export default function StoreDashboard() {
+  const { user } = useAuth();
   const { push } = useToast();
   const [previewOpen, setPreviewOpen] = useState(false);
   const url = getStoreUrl();
@@ -24,9 +27,14 @@ export default function StoreDashboard() {
     { label: "Baixo estoque", value: "3", icon: AlertTriangle, color: "text-[#F59E0B]" },
   ];
 
+  const storeName = user?.name || "Loja";
+
   return (
     <DashboardShell sidebar={<StoreSidebar />}>
-      <h1 className="mb-4 text-2xl font-semibold text-[#111827]">Dashboard</h1>
+      <Helmet>
+        <title>Deliverei | Dashboard - {storeName}</title>
+      </Helmet>
+      <h1 className="mb-4 text-2xl font-semibold text-[#111827]">Dashboard - {storeName}</h1>
 
       <div className="grid gap-4 md:grid-cols-4">
         {stats.map((stat) => {
