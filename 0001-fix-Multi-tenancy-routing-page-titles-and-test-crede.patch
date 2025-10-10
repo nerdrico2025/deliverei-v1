@@ -1,0 +1,287 @@
+From 1ea15dcfbfe669da9407984e7bbe38328149e30f Mon Sep 17 00:00:00 2001
+From: Deliverei Bot <deliverei@abacus.ai>
+Date: Fri, 10 Oct 2025 02:24:53 +0000
+Subject: [PATCH] fix: Multi-tenancy routing, page titles, and test credentials
+
+- Fixed AuthContext to properly assign empresaId based on login email
+- Pizza Express admin now gets empresaId 'pizza-express'
+- Burger King admin now gets empresaId 'burger-king'
+- Store slug is saved to localStorage on login for proper isolation
+- Updated Login page to show correct test credentials with passwords
+- Changed default store slug from 'minha-marmitaria' to 'minha-loja'
+- Added react-helmet-async for dynamic page titles
+- Updated index.html base title to 'Deliverei'
+- Added Helmet to Login page: 'Deliverei | Login'
+- Added Helmet to Store Dashboard with company name
+- Dashboard now shows company name in header
+
+This fixes the issue where all users were seeing the same 'marmita' dashboard.
+---
+ index.html                          |  2 +-
+ package-lock.json                   | 36 +++++++++++++++++++++
+ package.json                        |  1 +
+ src/auth/AuthContext.tsx            | 49 +++++++++++++++++++++++------
+ src/main.tsx                        |  5 ++-
+ src/pages/admin/store/Dashboard.tsx | 12 +++++--
+ src/pages/public/Login.tsx          | 13 +++++---
+ 7 files changed, 101 insertions(+), 17 deletions(-)
+
+diff --git a/index.html b/index.html
+index 97243a2..0d6b02f 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,7 @@
+     <meta charset="UTF-8" />
+     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-    <title>New chat</title>
++    <title>Deliverei</title>
+   </head>
+   <body>
+     <div id="root"></div>
+diff --git a/package-lock.json b/package-lock.json
+index 00fc5af..cd1eb3d 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -16,6 +16,7 @@
+         "lucide-react": "^0.344.0",
+         "react": "^18.3.1",
+         "react-dom": "^18.3.1",
++        "react-helmet-async": "^2.0.5",
+         "react-qr-code": "^2.0.18",
+         "react-router-dom": "^7.9.3",
+         "recharts": "^3.2.1"
+@@ -3186,6 +3187,15 @@
+         "node": ">=12"
+       }
+     },
++    "node_modules/invariant": {
++      "version": "2.2.4",
++      "resolved": "https://registry.npmjs.org/invariant/-/invariant-2.2.4.tgz",
++      "integrity": "sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA==",
++      "license": "MIT",
++      "dependencies": {
++        "loose-envify": "^1.0.0"
++      }
++    },
+     "node_modules/is-binary-path": {
+       "version": "2.1.0",
+       "resolved": "https://registry.npmjs.org/is-binary-path/-/is-binary-path-2.1.0.tgz",
+@@ -3965,6 +3975,26 @@
+         "react": "^18.3.1"
+       }
+     },
++    "node_modules/react-fast-compare": {
++      "version": "3.2.2",
++      "resolved": "https://registry.npmjs.org/react-fast-compare/-/react-fast-compare-3.2.2.tgz",
++      "integrity": "sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==",
++      "license": "MIT"
++    },
++    "node_modules/react-helmet-async": {
++      "version": "2.0.5",
++      "resolved": "https://registry.npmjs.org/react-helmet-async/-/react-helmet-async-2.0.5.tgz",
++      "integrity": "sha512-rYUYHeus+i27MvFE+Jaa4WsyBKGkL6qVgbJvSBoX8mbsWoABJXdEO0bZyi0F6i+4f0NuIb8AvqPMj3iXFHkMwg==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "invariant": "^2.2.4",
++        "react-fast-compare": "^3.2.2",
++        "shallowequal": "^1.1.0"
++      },
++      "peerDependencies": {
++        "react": "^16.6.0 || ^17.0.0 || ^18.0.0"
++      }
++    },
+     "node_modules/react-is": {
+       "version": "19.2.0",
+       "resolved": "https://registry.npmjs.org/react-is/-/react-is-19.2.0.tgz",
+@@ -4241,6 +4271,12 @@
+       "integrity": "sha512-IOc8uWeOZgnb3ptbCURJWNjWUPcO3ZnTTdzsurqERrP6nPyv+paC55vJM0LpOlT2ne+Ix+9+CRG1MNLlyZ4GjQ==",
+       "license": "MIT"
+     },
++    "node_modules/shallowequal": {
++      "version": "1.1.0",
++      "resolved": "https://registry.npmjs.org/shallowequal/-/shallowequal-1.1.0.tgz",
++      "integrity": "sha512-y0m1JoUZSlPAjXVtPPW70aZWfIL/dSP7AFkRnniLCrK/8MDKog3TySTBmckD+RObVxH0v4Tox67+F14PdED2oQ==",
++      "license": "MIT"
++    },
+     "node_modules/shebang-command": {
+       "version": "2.0.0",
+       "resolved": "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz",
+diff --git a/package.json b/package.json
+index 15b193c..c1208be 100644
+--- a/package.json
++++ b/package.json
+@@ -19,6 +19,7 @@
+     "lucide-react": "^0.344.0",
+     "react": "^18.3.1",
+     "react-dom": "^18.3.1",
++    "react-helmet-async": "^2.0.5",
+     "react-qr-code": "^2.0.18",
+     "react-router-dom": "^7.9.3",
+     "recharts": "^3.2.1"
+diff --git a/src/auth/AuthContext.tsx b/src/auth/AuthContext.tsx
+index 0a16507..529f6ee 100644
+--- a/src/auth/AuthContext.tsx
++++ b/src/auth/AuthContext.tsx
+@@ -49,23 +49,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
+   }, [state]);
+ 
+   const login = async (email: string, _password: string) => {
+-    const role: UserRole = email.includes("+super")
+-      ? "superadmin"
+-      : email.includes("+suporte")
+-      ? "suporte"
+-      : email.includes("+cliente")
+-      ? "cliente"
+-      : "empresa";
++    // Determine role and company based on email
++    let role: UserRole;
++    let empresaId: string | null = null;
++    let name: string;
++
++    if (email === "admin@deliverei.com.br") {
++      role = "superadmin";
++      name = "Super Administrador";
++    } else if (email === "admin@pizza-express.com") {
++      role = "empresa";
++      empresaId = "pizza-express";
++      name = "Admin Pizza Express";
++    } else if (email === "admin@burger-king.com") {
++      role = "empresa";
++      empresaId = "burger-king";
++      name = "Admin Burger King";
++    } else if (email === "cliente@exemplo.com") {
++      role = "cliente";
++      name = "João Silva";
++    } else if (email.includes("+super")) {
++      role = "superadmin";
++      name = email.split("@")[0];
++    } else if (email.includes("+suporte")) {
++      role = "suporte";
++      name = email.split("@")[0];
++    } else if (email.includes("+cliente")) {
++      role = "cliente";
++      name = email.split("@")[0];
++    } else {
++      role = "empresa";
++      empresaId = "default-company";
++      name = email.split("@")[0];
++    }
+ 
+     const mockUser: AuthUser = {
+       id: "u_" + Math.random().toString(36).slice(2),
+-      name: email.split("@")[0],
++      name,
+       email,
+       role,
+-      empresaId: role === "empresa" ? "emp_123" : null,
++      empresaId,
+       lastLogin: new Date().toISOString(),
+     };
+ 
++    // Store company slug in localStorage for company admins
++    if (role === "empresa" && empresaId) {
++      localStorage.setItem("deliverei_store_slug", empresaId);
++    }
++
+     setState({ isAuth: true, user: mockUser, token: "mock-jwt-token" });
+   };
+ 
+diff --git a/src/main.tsx b/src/main.tsx
+index ea9e363..8790959 100644
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -1,10 +1,13 @@
+ import { StrictMode } from 'react';
+ import { createRoot } from 'react-dom/client';
++import { HelmetProvider } from 'react-helmet-async';
+ import App from './App.tsx';
+ import './index.css';
+ 
+ createRoot(document.getElementById('root')!).render(
+   <StrictMode>
+-    <App />
++    <HelmetProvider>
++      <App />
++    </HelmetProvider>
+   </StrictMode>
+ );
+diff --git a/src/pages/admin/store/Dashboard.tsx b/src/pages/admin/store/Dashboard.tsx
+index fec5a4d..0732e90 100644
+--- a/src/pages/admin/store/Dashboard.tsx
++++ b/src/pages/admin/store/Dashboard.tsx
+@@ -1,14 +1,17 @@
+ import React, { useState } from "react";
++import { Helmet } from "react-helmet-async";
+ import { DashboardShell } from "../../../components/layout/DashboardShell";
+ import { StoreSidebar } from "../../../components/layout/StoreSidebar";
+ import { TrendingUp, ShoppingBag, DollarSign, AlertTriangle, ExternalLink, Copy, Eye, X } from "lucide-react";
+ import { Input } from "../../../components/common/Input";
+ import { useToast } from "../../../ui/feedback/ToastContext";
++import { useAuth } from "../../../auth/AuthContext";
+ 
+-const getStoreSlug = () => (localStorage.getItem("deliverei_store_slug") || "minha-marmitaria").trim();
++const getStoreSlug = () => (localStorage.getItem("deliverei_store_slug") || "minha-loja").trim();
+ const getStoreUrl = () => `${window.location.origin}/loja/${getStoreSlug()}`;
+ 
+ export default function StoreDashboard() {
++  const { user } = useAuth();
+   const { push } = useToast();
+   const [previewOpen, setPreviewOpen] = useState(false);
+   const url = getStoreUrl();
+@@ -24,9 +27,14 @@ export default function StoreDashboard() {
+     { label: "Baixo estoque", value: "3", icon: AlertTriangle, color: "text-[#F59E0B]" },
+   ];
+ 
++  const storeName = user?.name || "Loja";
++
+   return (
+     <DashboardShell sidebar={<StoreSidebar />}>
+-      <h1 className="mb-4 text-2xl font-semibold text-[#111827]">Dashboard</h1>
++      <Helmet>
++        <title>Deliverei | Dashboard - {storeName}</title>
++      </Helmet>
++      <h1 className="mb-4 text-2xl font-semibold text-[#111827]">Dashboard - {storeName}</h1>
+ 
+       <div className="grid gap-4 md:grid-cols-4">
+         {stats.map((stat) => {
+diff --git a/src/pages/public/Login.tsx b/src/pages/public/Login.tsx
+index 20d705e..d27e027 100644
+--- a/src/pages/public/Login.tsx
++++ b/src/pages/public/Login.tsx
+@@ -1,5 +1,6 @@
+ import React, { useState, useEffect } from "react";
+ import { useNavigate, useLocation } from "react-router-dom";
++import { Helmet } from "react-helmet-async";
+ import { PublicHeader } from "../../components/layout/PublicHeader";
+ import { Input } from "../../components/common/Input";
+ import { Button } from "../../components/common/Button";
+@@ -50,6 +51,9 @@ export default function Login() {
+ 
+   return (
+     <>
++      <Helmet>
++        <title>Deliverei | Login</title>
++      </Helmet>
+       <PublicHeader />
+       <div className="mx-auto grid max-w-md gap-4 px-4 py-12">
+         <div className="rounded-md border border-[#E5E7EB] bg-white p-6 shadow-sm">
+@@ -83,10 +87,11 @@ export default function Login() {
+             </Button>
+           </form>
+           <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+-            <div className="font-semibold mb-1">Teste os perfis:</div>
+-            <div>• Empresa: qualquer@email.com</div>
+-            <div>• SuperAdmin: admin+super@email.com</div>
+-            <div>• Suporte: agente+suporte@email.com</div>
++            <div className="font-semibold mb-1">Credenciais de teste:</div>
++            <div>• Super Admin: admin@deliverei.com.br / admin123</div>
++            <div>• Pizza Express: admin@pizza-express.com / pizza123</div>
++            <div>• Burger King: admin@burger-king.com / pizza123</div>
++            <div>• Cliente: cliente@exemplo.com / cliente123</div>
+           </div>
+         </div>
+       </div>
+-- 
+2.39.5
+

@@ -1,3 +1,4 @@
+
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -13,8 +14,8 @@ async function main() {
   await prisma.usuario.deleteMany();
   await prisma.empresa.deleteMany();
 
-  // Criar empresa exemplo
-  const empresaExemplo = await prisma.empresa.create({
+  // Criar empresa Pizza Express
+  const empresaPizza = await prisma.empresa.create({
     data: {
       nome: 'Pizza Express',
       slug: 'pizza-express',
@@ -23,10 +24,10 @@ async function main() {
     },
   });
 
-  console.log('✅ Empresa criada:', empresaExemplo.nome);
+  console.log('✅ Empresa criada:', empresaPizza.nome);
 
-  // Criar segunda empresa exemplo
-  const empresaExemplo2 = await prisma.empresa.create({
+  // Criar empresa Burger King
+  const empresaBurger = await prisma.empresa.create({
     data: {
       nome: 'Burger King',
       slug: 'burger-king',
@@ -35,7 +36,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Empresa criada:', empresaExemplo2.nome);
+  console.log('✅ Empresa criada:', empresaBurger.nome);
 
   // Criar Super Admin
   const hashedPasswordAdmin = await bcrypt.hash('admin123', 10);
@@ -52,35 +53,35 @@ async function main() {
   console.log('✅ Super Admin criado:', superAdmin.email);
 
   // Criar Admin da empresa Pizza Express
-  const hashedPasswordEmpresa = await bcrypt.hash('pizza123', 10);
-  const adminEmpresa = await prisma.usuario.create({
+  const hashedPasswordPizza = await bcrypt.hash('pizza123', 10);
+  const adminPizza = await prisma.usuario.create({
     data: {
       email: 'admin@pizza-express.com',
-      senha: hashedPasswordEmpresa,
+      senha: hashedPasswordPizza,
       nome: 'Admin Pizza Express',
       role: 'ADMIN_EMPRESA',
-      empresaId: empresaExemplo.id,
+      empresaId: empresaPizza.id,
       ativo: true,
     },
   });
 
-  console.log('✅ Admin da empresa criado:', adminEmpresa.email);
+  console.log('✅ Admin da empresa criado:', adminPizza.email);
 
   // Criar Admin da empresa Burger King
-  const adminEmpresa2 = await prisma.usuario.create({
+  const adminBurger = await prisma.usuario.create({
     data: {
       email: 'admin@burger-king.com',
-      senha: hashedPasswordEmpresa,
+      senha: hashedPasswordPizza, // Same password as Pizza Express
       nome: 'Admin Burger King',
       role: 'ADMIN_EMPRESA',
-      empresaId: empresaExemplo2.id,
+      empresaId: empresaBurger.id,
       ativo: true,
     },
   });
 
-  console.log('✅ Admin da empresa criado:', adminEmpresa2.email);
+  console.log('✅ Admin da empresa criado:', adminBurger.email);
 
-  // Criar cliente exemplo
+  // Criar cliente exemplo (associado à Pizza Express)
   const hashedPasswordCliente = await bcrypt.hash('cliente123', 10);
   const cliente = await prisma.usuario.create({
     data: {
@@ -88,7 +89,7 @@ async function main() {
       senha: hashedPasswordCliente,
       nome: 'João Silva',
       role: 'CLIENTE',
-      empresaId: empresaExemplo.id,
+      empresaId: empresaPizza.id,
       ativo: true,
     },
   });
@@ -96,7 +97,7 @@ async function main() {
   console.log('✅ Cliente criado:', cliente.email);
 
   // Criar produtos para Pizza Express
-  const produtos = [
+  const produtosPizza = [
     {
       nome: 'Pizza Margherita',
       descricao: 'Molho de tomate, mussarela e manjericão',
@@ -104,7 +105,7 @@ async function main() {
       imagem: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002',
       categoria: 'Pizza',
       estoque: 50,
-      empresaId: empresaExemplo.id,
+      empresaId: empresaPizza.id,
     },
     {
       nome: 'Pizza Calabresa',
@@ -113,7 +114,7 @@ async function main() {
       imagem: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38',
       categoria: 'Pizza',
       estoque: 45,
-      empresaId: empresaExemplo.id,
+      empresaId: empresaPizza.id,
     },
     {
       nome: 'Pizza Portuguesa',
@@ -122,7 +123,7 @@ async function main() {
       imagem: 'https://images.unsplash.com/photo-1513104890138-7c749659a591',
       categoria: 'Pizza',
       estoque: 40,
-      empresaId: empresaExemplo.id,
+      empresaId: empresaPizza.id,
     },
     {
       nome: 'Pizza Quatro Queijos',
@@ -131,7 +132,7 @@ async function main() {
       imagem: 'https://images.unsplash.com/photo-1571997478779-2adcbbe9ab2f',
       categoria: 'Pizza',
       estoque: 35,
-      empresaId: empresaExemplo.id,
+      empresaId: empresaPizza.id,
     },
     {
       nome: 'Refrigerante Coca-Cola 2L',
@@ -140,15 +141,15 @@ async function main() {
       imagem: 'https://images.unsplash.com/photo-1554866585-cd94860890b7',
       categoria: 'Bebida',
       estoque: 100,
-      empresaId: empresaExemplo.id,
+      empresaId: empresaPizza.id,
     },
   ];
 
-  for (const produto of produtos) {
+  for (const produto of produtosPizza) {
     await prisma.produto.create({ data: produto });
   }
 
-  console.log(`✅ ${produtos.length} produtos criados para Pizza Express`);
+  console.log(`✅ ${produtosPizza.length} produtos criados para Pizza Express`);
 
   // Criar produtos para Burger King
   const produtosBurger = [
@@ -159,7 +160,7 @@ async function main() {
       imagem: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd',
       categoria: 'Hambúrguer',
       estoque: 60,
-      empresaId: empresaExemplo2.id,
+      empresaId: empresaBurger.id,
     },
     {
       nome: 'Mega Stacker 2.0',
@@ -168,7 +169,7 @@ async function main() {
       imagem: 'https://images.unsplash.com/photo-1550547660-d9450f859349',
       categoria: 'Hambúrguer',
       estoque: 50,
-      empresaId: empresaExemplo2.id,
+      empresaId: empresaBurger.id,
     },
     {
       nome: 'Batata Frita Grande',
@@ -177,7 +178,7 @@ async function main() {
       imagem: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877',
       categoria: 'Acompanhamento',
       estoque: 80,
-      empresaId: empresaExemplo2.id,
+      empresaId: empresaBurger.id,
     },
   ];
 
@@ -193,6 +194,11 @@ async function main() {
   console.log('   Admin Pizza Express: admin@pizza-express.com / pizza123');
   console.log('   Admin Burger King: admin@burger-king.com / pizza123');
   console.log('   Cliente: cliente@exemplo.com / cliente123');
+  console.log('\n📊 Dados criados:');
+  console.log(`   - 2 empresas: Pizza Express e Burger King`);
+  console.log(`   - ${produtosPizza.length} produtos para Pizza Express`);
+  console.log(`   - ${produtosBurger.length} produtos para Burger King`);
+  console.log(`   - 1 cliente de teste (João Silva)`);
 }
 
 main()

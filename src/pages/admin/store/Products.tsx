@@ -1,21 +1,42 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { X } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
 
-type Product = { id: string; title: string; price: number; status: string };
+type Product = { id: string; title: string; price: number; status: string; empresaId: string };
+
+// Mock data with empresaId for data isolation
+const MOCK_PRODUCTS: Product[] = [
+  { id: "1", title: "Pizza Margherita", price: 35.9, status: "publicado", empresaId: "pizza-express" },
+  { id: "2", title: "Pizza Calabresa", price: 39.9, status: "publicado", empresaId: "pizza-express" },
+  { id: "3", title: "Pizza Portuguesa", price: 42.9, status: "publicado", empresaId: "pizza-express" },
+  { id: "4", title: "Pizza Quatro Queijos", price: 44.9, status: "rascunho", empresaId: "pizza-express" },
+  { id: "5", title: "Refrigerante Coca-Cola 2L", price: 8.9, status: "publicado", empresaId: "pizza-express" },
+  { id: "6", title: "Whopper", price: 28.9, status: "publicado", empresaId: "burger-king" },
+  { id: "7", title: "Mega Stacker 2.0", price: 32.9, status: "publicado", empresaId: "burger-king" },
+  { id: "8", title: "Batata Frita Grande", price: 12.9, status: "publicado", empresaId: "burger-king" },
+];
 
 export default function ProductsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
-  const [list] = useState<Product[]>([
-    { id: "1", title: "Marmita Fit", price: 24.9, status: "publicado" },
-    { id: "2", title: "Marmita Tradicional", price: 22.5, status: "publicado" },
-    { id: "3", title: "Marmita Vegana", price: 26.0, status: "rascunho" },
-  ]);
+  const [list, setList] = useState<Product[]>([]);
+
+  useEffect(() => {
+    // Filter products by empresaId for data isolation
+    if (user?.empresaId) {
+      const filteredProducts = MOCK_PRODUCTS.filter(p => p.empresaId === user.empresaId);
+      setList(filteredProducts);
+    } else {
+      setList([]);
+    }
+  }, [user?.empresaId]);
 
   return (
     <DashboardShell sidebar={<StoreSidebar />}>
@@ -34,23 +55,31 @@ export default function ProductsPage() {
             </tr>
           </thead>
           <tbody>
-            {list.map((p) => (
-              <tr key={p.id} className="border-t">
-                <td className="p-3">{p.title}</td>
-                <td className="p-3">R$ {p.price.toFixed(2)}</td>
-                <td className="p-3 capitalize">{p.status}</td>
-                <td className="p-3 text-right">
-                  <button
-                    className="text-[#D22630] hover:underline"
-                    onClick={() => navigate(`/admin/store/products/${p.id}/edit`)}
-                  >
-                    Editar
-                  </button>
-                  <span className="mx-2 text-[#E5E7EB]">|</span>
-                  <button className="text-[#DC2626] hover:underline">Excluir</button>
+            {list.length === 0 ? (
+              <tr>
+                <td className="p-6 text-center text-[#4B5563]" colSpan={4}>
+                  Nenhum produto encontrado para esta empresa.
                 </td>
               </tr>
-            ))}
+            ) : (
+              list.map((p) => (
+                <tr key={p.id} className="border-t">
+                  <td className="p-3">{p.title}</td>
+                  <td className="p-3">R$ {p.price.toFixed(2)}</td>
+                  <td className="p-3 capitalize">{p.status}</td>
+                  <td className="p-3 text-right">
+                    <button
+                      className="text-[#D22630] hover:underline"
+                      onClick={() => navigate(`/admin/store/products/${p.id}/edit`)}
+                    >
+                      Editar
+                    </button>
+                    <span className="mx-2 text-[#E5E7EB]">|</span>
+                    <button className="text-[#DC2626] hover:underline">Excluir</button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
