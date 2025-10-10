@@ -1,6 +1,6 @@
 
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { SuperAdminSidebar } from "../../../components/layout/SuperAdminSidebar";
@@ -75,7 +75,30 @@ const generateUniqueEmpresaId = (nome: string, existingIds: string[]): string =>
   return `${baseSlug}-${timestamp}${random}`;
 };
 
+// Deep equality check for arrays of companies
+const areCompaniesEqual = (arr1: Company[], arr2: Company[]): boolean => {
+  if (arr1.length !== arr2.length) return false;
+  
+  // Sort both arrays by id for consistent comparison
+  const sorted1 = [...arr1].sort((a, b) => a.id.localeCompare(b.id));
+  const sorted2 = [...arr2].sort((a, b) => a.id.localeCompare(b.id));
+  
+  return sorted1.every((company, index) => {
+    const other = sorted2[index];
+    return (
+      company.id === other.id &&
+      company.nome === other.nome &&
+      company.plano === other.plano &&
+      company.status === other.status &&
+      company.dataCriacao === other.dataCriacao &&
+      company.empresaId === other.empresaId
+    );
+  });
+};
+
 export default function CompaniesPage() {
+  console.log("[Companies] Component render");
+  
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"" | Company["status"]>("");
   const [showModal, setShowModal] = useState(false);
@@ -87,6 +110,9 @@ export default function CompaniesPage() {
   const { impersonate } = useAuth();
   const { push } = useToast();
   
+  // Track if component has been initialized to prevent re-initialization
+  const isInitialized = useRef(false);
+  
   const [formData, setFormData] = useState<NovaEmpresaForm>({
     nome: "",
     email: "",
@@ -97,30 +123,64 @@ export default function CompaniesPage() {
     confirmarSenha: "",
   });
 
-  // CRITICAL FIX: Initialize companies from localStorage or use defaults
+  // CRITICAL FIX: Initialize companies ONCE from localStorage or use defaults
+  // Use lazy initialization to prevent re-computation on every render
   const [list, setList] = useState<Company[]>(() => {
+    console.log("[Companies] Initializing state from localStorage");
     const stored = localStorage.getItem("deliverei_companies");
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
+        console.log("[Companies] Loaded from localStorage:", parsed.length, "companies");
         // Merge with initial companies (in case new ones were added)
         const existingIds = parsed.map((c: Company) => c.empresaId);
         const newCompanies = INITIAL_COMPANIES.filter(c => !existingIds.includes(c.empresaId));
+        if (newCompanies.length > 0) {
+          console.log("[Companies] Merging", newCompanies.length, "new companies");
+        }
         return [...parsed, ...newCompanies];
-      } catch {
+      } catch (error) {
+        console.error("[Companies] Error parsing localStorage:", error);
         return INITIAL_COMPANIES;
       }
     }
+    console.log("[Companies] Using initial companies:", INITIAL_COMPANIES.length);
     return INITIAL_COMPANIES;
   });
 
-  // Save to localStorage and notify other components whenever list changes
-  // NOTE: This component does NOT listen to its own events to prevent infinite loops
-  // Only other components (like Subscriptions.tsx) should listen to "companies-updated"
+  // CRITICAL FIX: Save to localStorage ONLY when list actually changes (deep comparison)
+  // This prevents infinite re-render loops caused by object reference changes
   useEffect(() => {
-    localStorage.setItem("deliverei_companies", JSON.stringify(list));
-    // Dispatch event to notify other components (but don't listen to it ourselves!)
-    window.dispatchEvent(new CustomEvent("companies-updated"));
+    console.log("[Companies] useEffect triggered - checking if save needed");
+    
+    // Skip on first mount - data is already in sync from initialization
+    if (!isInitialized.current) {
+      console.log("[Companies] First mount - skipping save, marking as initialized");
+      isInitialized.current = true;
+      return;
+    }
+    
+    // Get current localStorage data
+    const stored = localStorage.getItem("deliverei_companies");
+    let currentStored: Company[] = [];
+    
+    if (stored) {
+      try {
+        currentStored = JSON.parse(stored);
+      } catch (error) {
+        console.error("[Companies] Error parsing stored data:", error);
+      }
+    }
+    
+    // Only save if data has actually changed (deep comparison)
+    if (!areCompaniesEqual(list, currentStored)) {
+      console.log("[Companies] Data changed - saving to localStorage and dispatching event");
+      localStorage.setItem("deliverei_companies", JSON.stringify(list));
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent("companies-updated"));
+    } else {
+      console.log("[Companies] Data unchanged - skipping save");
+    }
   }, [list]);
 
   // State to manage subscriptions (shared with Subscriptions page via localStorage for demo)
@@ -153,6 +213,7 @@ export default function CompaniesPage() {
   );
 
   const handleViewDetails = (company: Company) => {
+    console.log("[Companies] handleViewDetails called for:", company.nome);
     if (!company.empresaId) {
       push({ message: "Empresa não possui ID válido", tone: "error" });
       return;
@@ -169,6 +230,7 @@ export default function CompaniesPage() {
   };
 
   const handleOpenModal = () => {
+    console.log("[Companies] Opening modal");
     setFormData({
       nome: "",
       email: "",
@@ -182,6 +244,7 @@ export default function CompaniesPage() {
   };
 
   const handleCloseModal = () => {
+    console.log("[Companies] Closing modal");
     setShowModal(false);
     setFormData({
       nome: "",
@@ -195,6 +258,7 @@ export default function CompaniesPage() {
   };
 
   const handleCloseSuccessModal = () => {
+    console.log("[Companies] Closing success modal");
     setShowSuccessModal(false);
     setCreatedCompanyInfo(null);
     setCopiedField(null);
@@ -248,6 +312,7 @@ export default function CompaniesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[Companies] handleSubmit called");
     
     if (!validateForm()) return;
 
@@ -260,6 +325,8 @@ export default function CompaniesPage() {
       // Generate unique empresaId
       const existingIds = list.map(c => c.empresaId).filter(Boolean) as string[];
       const empresaId = generateUniqueEmpresaId(formData.nome, existingIds);
+      
+      console.log("[Companies] Creating new company with ID:", empresaId);
       
       // Create new company
       const newCompany: Company = {
@@ -309,10 +376,12 @@ export default function CompaniesPage() {
       // Set created company info for success modal
       setCreatedCompanyInfo(credentials);
       
+      console.log("[Companies] Company created successfully");
       push({ message: "Empresa e assinatura criadas com sucesso!", tone: "success" });
       handleCloseModal();
       setShowSuccessModal(true);
     } catch (error) {
+      console.error("[Companies] Error creating company:", error);
       push({ message: "Erro ao criar empresa", tone: "error" });
     } finally {
       setLoading(false);
