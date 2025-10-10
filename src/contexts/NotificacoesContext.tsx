@@ -23,12 +23,24 @@ export const NotificacoesProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const fetchNotificacoes = useCallback(async () => {
     if (!user) return;
     
+    // Skip API calls if backend is not available (localhost in production)
+    // This prevents console spam from failed requests
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost) {
+      // Use mock data for development without backend
+      return;
+    }
+    
     try {
       setLoading(true);
       const data = await notificacoesApi.listar();
       setNotificacoes(data);
     } catch (error) {
-      console.error('Erro ao buscar notificações:', error);
+      // Silently fail - don't spam console with errors when backend is unavailable
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Backend de notificações não disponível');
+      }
     } finally {
       setLoading(false);
     }
