@@ -7,12 +7,67 @@ import { useCart } from "../../hooks/useCart";
 import { useClientAuth } from "../../contexts/ClientAuthContext";
 import { User } from "lucide-react";
 
+// Validation helper functions
+const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validatePhone = (phone: string): boolean => {
+  // Remove non-digit characters
+  const cleanPhone = phone.replace(/\D/g, "");
+  // Brazilian phone should have 10 or 11 digits
+  return cleanPhone.length >= 10 && cleanPhone.length <= 11;
+};
+
+const validateCPF = (cpf: string): boolean => {
+  if (!cpf) return true; // CPF is optional
+  
+  // Remove non-digit characters
+  const cleanCPF = cpf.replace(/\D/g, "");
+  
+  // CPF should have 11 digits
+  if (cleanCPF.length !== 11) return false;
+  
+  // Check if all digits are the same (invalid CPF)
+  if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+  
+  // Validate CPF checksum
+  let sum = 0;
+  let remainder;
+  
+  for (let i = 1; i <= 9; i++) {
+    sum += parseInt(cleanCPF.substring(i - 1, i)) * (11 - i);
+  }
+  
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.substring(9, 10))) return false;
+  
+  sum = 0;
+  for (let i = 1; i <= 10; i++) {
+    sum += parseInt(cleanCPF.substring(i - 1, i)) * (12 - i);
+  }
+  
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.substring(10, 11))) return false;
+  
+  return true;
+};
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const { items, add, subtotal, lastAddedId, clear } = useCart();
   const { isAuthenticated, cliente } = useClientAuth();
   const [loading, setLoading] = useState(false);
+  
+  // Personal data form state (for non-authenticated users)
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [cpf, setCpf] = useState("");
   
   // Address form state
   const [cep, setCep] = useState("");
@@ -22,31 +77,125 @@ export default function Checkout() {
   const [bairro, setBairro] = useState("");
   const [cidade, setCidade] = useState("");
   const [uf, setUf] = useState("");
+  
+  // Error states
+  const [emailError, setEmailError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [cpfError, setCpfError] = useState("");
 
   const deliveryFee = 7.9;
   const total = subtotal + deliveryFee;
 
   // Auto-fill form with client data if authenticated
   useEffect(() => {
-    if (isAuthenticated && cliente?.endereco) {
-      setCep(cliente.endereco.cep || "");
-      setRua(cliente.endereco.rua || "");
-      setNumero(cliente.endereco.numero || "");
-      setComplemento(cliente.endereco.complemento || "");
-      setBairro(cliente.endereco.bairro || "");
-      setCidade(cliente.endereco.cidade || "");
-      setUf(cliente.endereco.uf || "");
+    if (isAuthenticated && cliente) {
+      // Fill personal data
+      setNome(cliente.nome || "");
+      setEmail(cliente.email || "");
+      setTelefone(cliente.telefone || "");
+      setCpf(cliente.cpf || "");
+      
+      // Fill address data
+      if (cliente.endereco) {
+        setCep(cliente.endereco.cep || "");
+        setRua(cliente.endereco.rua || "");
+        setNumero(cliente.endereco.numero || "");
+        setComplemento(cliente.endereco.complemento || "");
+        setBairro(cliente.endereco.bairro || "");
+        setCidade(cliente.endereco.cidade || "");
+        setUf(cliente.endereco.uf || "");
+      }
     }
   }, [isAuthenticated, cliente]);
 
   const confirm = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setEmailError("");
+    setPhoneError("");
+    setCpfError("");
+    
+    // Validate personal data if not authenticated
+    if (!isAuthenticated) {
+      let hasError = false;
+      
+      if (!validateEmail(email)) {
+        setEmailError("Email inválido");
+        hasError = true;
+      }
+      
+      if (!validatePhone(telefone)) {
+        setPhoneError("Telefone inválido (deve ter 10 ou 11 dígitos)");
+        hasError = true;
+      }
+      
+      if (cpf && !validateCPF(cpf)) {
+        setCpfError("CPF inválido");
+        hasError = true;
+      }
+      
+      if (hasError) {
+        return;
+      }
+    }
+    
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 1000));
+    try {
+      // TODO: Implement order creation API call
+      // If user is not authenticated, pass personal data to create account after order
+      const orderData = {
+        items,
+        endereco: {
+          cep,
+          rua,
+          numero,
+          complemento,
+          bairro,
+          cidade,
+          uf,
+        },
+        ...(!isAuthenticated && {
+          dadosPessoais: {
+            nome,
+            email,
+            telefone,
+            cpf: cpf || null,
+          },
+        }),
+      };
+      
+      // Simulate API call
+      await new Promise((r) => setTimeout(r, 1000));
+      
+      // Store order data in sessionStorage for post-purchase flow
+      if (!isAuthenticated) {
+        sessionStorage.setItem("pendingAccount", JSON.stringify({
+          nome,
+          email,
+          telefone,
+          cpf: cpf || null,
+          endereco: {
+            cep,
+            rua,
+            numero,
+            complemento,
+            bairro,
+            cidade,
+            uf,
+          },
+        }));
+      }
 
-    clear();
-    navigate("/storefront/order-confirmation?pedido=12345");
+      clear();
+      navigate(`/loja/${slug}/order-confirmation?pedido=12345`);
+    } catch (error) {
+      console.error("Error creating order:", error);
+      alert("Erro ao finalizar pedido. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,6 +238,66 @@ export default function Checkout() {
 
         <div className="grid gap-6 lg:grid-cols-3">
           <form onSubmit={confirm} className="lg:col-span-2 space-y-4 rounded-md border border-[#E5E7EB] bg-white p-4">
+            {/* Personal Data Section - Only show if not authenticated */}
+            {!isAuthenticated && (
+              <div>
+                <h2 className="mb-2 text-lg font-semibold text-[#1F2937]">Dados Pessoais</h2>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <Input
+                      placeholder="Nome completo"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setEmailError("");
+                      }}
+                      required
+                    />
+                    {emailError && (
+                      <p className="mt-1 text-xs text-red-600">{emailError}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      type="tel"
+                      placeholder="Telefone"
+                      value={telefone}
+                      onChange={(e) => {
+                        setTelefone(e.target.value);
+                        setPhoneError("");
+                      }}
+                      required
+                    />
+                    {phoneError && (
+                      <p className="mt-1 text-xs text-red-600">{phoneError}</p>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <Input
+                      placeholder="CPF (opcional, recomendado para nota fiscal)"
+                      value={cpf}
+                      onChange={(e) => {
+                        setCpf(e.target.value);
+                        setCpfError("");
+                      }}
+                    />
+                    {cpfError && (
+                      <p className="mt-1 text-xs text-red-600">{cpfError}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div>
               <h2 className="mb-2 text-lg font-semibold text-[#1F2937]">Endereço de entrega</h2>
               <div className="grid gap-3 md:grid-cols-2">
