@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
@@ -10,21 +10,155 @@ import { useAuth } from "../../../auth/AuthContext";
 const getStoreSlug = () => (localStorage.getItem("deliverei_store_slug") || "minha-loja").trim();
 const getStoreUrl = () => `${window.location.origin}/loja/${getStoreSlug()}`;
 
+// Mock data types
+type Order = {
+  id: string;
+  cliente: string;
+  total: number;
+  pagamento: string;
+  status: string;
+  criadoEm: string;
+  empresaId: string;
+};
+
+type Product = {
+  id: string;
+  title: string;
+  price: number;
+  stock: number;
+  status: string;
+  empresaId: string;
+};
+
+// Mock data with empresaId for data isolation
+const MOCK_ORDERS: Order[] = [
+  {
+    id: "1001",
+    cliente: "Maria Silva",
+    total: 72.3,
+    pagamento: "aprovado",
+    status: "recebido",
+    criadoEm: "2025-10-05 12:20",
+    empresaId: "pizza-express",
+  },
+  {
+    id: "1002",
+    cliente: "João Silva",
+    total: 79.8,
+    pagamento: "aprovado",
+    status: "em_preparo",
+    criadoEm: "2025-10-05 13:45",
+    empresaId: "pizza-express",
+  },
+  {
+    id: "1003",
+    cliente: "Ana Costa",
+    total: 45.0,
+    pagamento: "aprovado",
+    status: "saiu_entrega",
+    criadoEm: "2025-10-05 14:10",
+    empresaId: "pizza-express",
+  },
+  {
+    id: "2001",
+    cliente: "Carlos Mendes",
+    total: 89.9,
+    pagamento: "aprovado",
+    status: "recebido",
+    criadoEm: "2025-10-05 12:30",
+    empresaId: "burger-king",
+  },
+  {
+    id: "2002",
+    cliente: "Fernanda Lima",
+    total: 67.5,
+    pagamento: "aprovado",
+    status: "aprovado",
+    criadoEm: "2025-10-05 13:00",
+    empresaId: "burger-king",
+  },
+];
+
+const MOCK_PRODUCTS: Product[] = [
+  { id: "p1", title: "Pizza Margherita", price: 35.9, stock: 5, status: "ativo", empresaId: "pizza-express" },
+  { id: "p2", title: "Pizza Calabresa", price: 38.9, stock: 2, status: "ativo", empresaId: "pizza-express" },
+  { id: "p3", title: "Pizza Portuguesa", price: 42.9, stock: 8, status: "ativo", empresaId: "pizza-express" },
+  { id: "p4", title: "Whopper", price: 28.9, stock: 15, status: "ativo", empresaId: "burger-king" },
+  { id: "p5", title: "Big King", price: 32.9, stock: 1, status: "ativo", empresaId: "burger-king" },
+];
+
 export default function StoreDashboard() {
   const { user } = useAuth();
   const { push } = useToast();
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [companyOrders, setCompanyOrders] = useState<Order[]>([]);
+  const [companyProducts, setCompanyProducts] = useState<Product[]>([]);
   const url = getStoreUrl();
+
+  // Filter data by empresaId
+  useEffect(() => {
+    if (user?.empresaId) {
+      const filteredOrders = MOCK_ORDERS.filter(o => o.empresaId === user.empresaId);
+      const filteredProducts = MOCK_PRODUCTS.filter(p => p.empresaId === user.empresaId);
+      setCompanyOrders(filteredOrders);
+      setCompanyProducts(filteredProducts);
+    } else {
+      setCompanyOrders([]);
+      setCompanyProducts([]);
+    }
+  }, [user?.empresaId]);
+
+  // Calculate metrics based on filtered data
+  const metrics = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Filter today's orders
+    const todayOrders = companyOrders.filter(o => {
+      const orderDate = o.criadoEm.split(' ')[0];
+      return orderDate === today;
+    });
+
+    // Calculate today's sales
+    const todaySales = todayOrders.reduce((sum, o) => sum + o.total, 0);
+
+    // Count open orders (not delivered or cancelled)
+    const openOrders = companyOrders.filter(o => 
+      o.status !== "entregue" && o.status !== "cancelado"
+    ).length;
+
+    // Calculate average ticket
+    const avgTicket = companyOrders.length > 0 
+      ? companyOrders.reduce((sum, o) => sum + o.total, 0) / companyOrders.length 
+      : 0;
+
+    // Count low stock products (stock <= 3)
+    const lowStock = companyProducts.filter(p => p.stock <= 3).length;
+
+    return {
+      todaySales,
+      openOrders,
+      avgTicket,
+      lowStock,
+    };
+  }, [companyOrders, companyProducts]);
+
+  // Get recent orders (last 3)
+  const recentOrders = useMemo(() => {
+    return [...companyOrders]
+      .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
+      .slice(0, 3);
+  }, [companyOrders]);
 
   const copyUrl = async () => {
     await navigator.clipboard.writeText(url);
     push({ message: "Link da vitrine copiado!", tone: "success" });
   };
+
   const stats = [
-    { label: "Vendas (hoje)", value: "R$ 1.245,00", icon: DollarSign, color: "text-[#16A34A]" },
-    { label: "Pedidos (em aberto)", value: "12", icon: ShoppingBag, color: "text-[#0EA5E9]" },
-    { label: "Ticket médio", value: "R$ 45,30", icon: TrendingUp, color: "text-[#D22630]" },
-    { label: "Baixo estoque", value: "3", icon: AlertTriangle, color: "text-[#F59E0B]" },
+    { label: "Vendas (hoje)", value: `R$ ${metrics.todaySales.toFixed(2)}`, icon: DollarSign, color: "text-[#16A34A]" },
+    { label: "Pedidos (em aberto)", value: metrics.openOrders.toString(), icon: ShoppingBag, color: "text-[#0EA5E9]" },
+    { label: "Ticket médio", value: `R$ ${metrics.avgTicket.toFixed(2)}`, icon: TrendingUp, color: "text-[#D22630]" },
+    { label: "Baixo estoque", value: metrics.lowStock.toString(), icon: AlertTriangle, color: "text-[#F59E0B]" },
   ];
 
   const storeName = user?.name || "Loja";
@@ -96,15 +230,21 @@ export default function StoreDashboard() {
         <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
           <h3 className="mb-3 text-lg font-semibold text-[#1F2937]">Pedidos recentes</h3>
           <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between border-b border-[#E5E7EB] pb-2">
-                <div>
-                  <div className="text-sm font-medium text-[#1F2937]">Pedido #{1000 + i}</div>
-                  <div className="text-xs text-[#4B5563]">Cliente {i}</div>
-                </div>
-                <div className="text-sm font-semibold text-[#1F2937]">R$ 45,00</div>
+            {recentOrders.length === 0 ? (
+              <div className="py-8 text-center text-[#4B5563]">
+                Nenhum pedido encontrado
               </div>
-            ))}
+            ) : (
+              recentOrders.map((order) => (
+                <div key={order.id} className="flex items-center justify-between border-b border-[#E5E7EB] pb-2">
+                  <div>
+                    <div className="text-sm font-medium text-[#1F2937]">Pedido #{order.id}</div>
+                    <div className="text-xs text-[#4B5563]">{order.cliente}</div>
+                  </div>
+                  <div className="text-sm font-semibold text-[#1F2937]">R$ {order.total.toFixed(2)}</div>
+                </div>
+              ))
+            )}
           </div>
         </section>
       </div>
