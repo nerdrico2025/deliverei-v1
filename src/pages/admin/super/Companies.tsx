@@ -114,28 +114,12 @@ export default function CompaniesPage() {
     return INITIAL_COMPANIES;
   });
 
-  // CRITICAL FIX: Listen for company updates from other sources
-  useEffect(() => {
-    const handleCompaniesUpdate = () => {
-      const stored = localStorage.getItem("deliverei_companies");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          setList(parsed);
-        } catch {
-          // Ignore parse errors
-        }
-      }
-    };
-
-    window.addEventListener("companies-updated", handleCompaniesUpdate);
-    return () => window.removeEventListener("companies-updated", handleCompaniesUpdate);
-  }, []);
-
-  // CRITICAL FIX: Save to localStorage whenever list changes
+  // Save to localStorage and notify other components whenever list changes
+  // NOTE: This component does NOT listen to its own events to prevent infinite loops
+  // Only other components (like Subscriptions.tsx) should listen to "companies-updated"
   useEffect(() => {
     localStorage.setItem("deliverei_companies", JSON.stringify(list));
-    // Dispatch event to notify other components
+    // Dispatch event to notify other components (but don't listen to it ourselves!)
     window.dispatchEvent(new CustomEvent("companies-updated"));
   }, [list]);
 
