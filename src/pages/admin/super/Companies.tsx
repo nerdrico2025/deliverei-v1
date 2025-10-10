@@ -27,6 +27,34 @@ type NovaEmpresaForm = {
   status: "ativo" | "inativo";
 };
 
+// Helper function to generate unique empresaId
+const generateUniqueEmpresaId = (nome: string, existingIds: string[]): string => {
+  // Create base slug from company name
+  let baseSlug = nome
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/[^a-z0-9\s-]/g, "") // Remove special chars
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single
+    .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+
+  // If slug is empty, use default
+  if (!baseSlug) {
+    baseSlug = "empresa";
+  }
+
+  // Check if base slug is unique
+  if (!existingIds.includes(baseSlug)) {
+    return baseSlug;
+  }
+
+  // If not unique, append timestamp and random string
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 6);
+  return `${baseSlug}-${timestamp}${random}`;
+};
+
 export default function CompaniesPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"" | Company["status"]>("");
@@ -52,6 +80,25 @@ export default function CompaniesPage() {
     { id: "5", nome: "Pizza Express", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06", empresaId: "pizza-express" },
     { id: "6", nome: "Burger King", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06", empresaId: "burger-king" },
   ]);
+
+  // State to manage subscriptions (shared with Subscriptions page via localStorage for demo)
+  const getSubscriptions = () => {
+    const stored = localStorage.getItem("deliverei_subscriptions");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const saveSubscriptions = (subs: any[]) => {
+    localStorage.setItem("deliverei_subscriptions", JSON.stringify(subs));
+    // Dispatch custom event to notify Subscriptions page
+    window.dispatchEvent(new CustomEvent("subscriptions-updated"));
+  };
 
   const filtered = useMemo(
     () =>
@@ -136,6 +183,10 @@ export default function CompaniesPage() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Generate unique empresaId
+      const existingIds = list.map(c => c.empresaId).filter(Boolean) as string[];
+      const empresaId = generateUniqueEmpresaId(formData.nome, existingIds);
+      
       // Create new company
       const newCompany: Company = {
         id: String(list.length + 1),
@@ -143,11 +194,31 @@ export default function CompaniesPage() {
         plano: formData.plano,
         status: formData.status,
         dataCriacao: new Date().toISOString().split('T')[0],
-        empresaId: formData.nome.toLowerCase().replace(/\s+/g, '-'),
+        empresaId,
       };
       
       setList(prev => [...prev, newCompany]);
-      push({ message: "Empresa criada com sucesso!", tone: "success" });
+      
+      // CRITICAL FIX: Create subscription entry for the new company
+      const currentDate = new Date();
+      const nextBillingDate = new Date(currentDate);
+      nextBillingDate.setDate(nextBillingDate.getDate() + 30);
+      
+      const newSubscription = {
+        id: `sub_${empresaId}_${Date.now()}`,
+        empresa: formData.nome,
+        empresaId: empresaId,
+        plano: formData.plano,
+        status: formData.status === "ativo" ? "ativo" : "inativo",
+        dataInicio: currentDate.toISOString().split('T')[0],
+        proxCobranca: formData.status === "ativo" ? nextBillingDate.toISOString().split('T')[0] : undefined,
+      };
+      
+      // Get existing subscriptions and add new one
+      const existingSubscriptions = getSubscriptions();
+      saveSubscriptions([...existingSubscriptions, newSubscription]);
+      
+      push({ message: "Empresa e assinatura criadas com sucesso!", tone: "success" });
       handleCloseModal();
     } catch (error) {
       push({ message: "Erro ao criar empresa", tone: "error" });

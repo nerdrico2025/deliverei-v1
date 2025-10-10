@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+
+import React, { useMemo, useState, useEffect } from "react";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { SuperAdminSidebar } from "../../../components/layout/SuperAdminSidebar";
 import { Input } from "../../../components/common/Input";
@@ -10,12 +11,24 @@ import { X } from "lucide-react";
 type Sub = {
   id: string;
   empresa: string;
+  empresaId?: string;
   plano: string;
   status: "ativo" | "inativo" | "atrasado" | "cancelado";
+  dataInicio?: string;
   proxCobranca?: string;
 };
 
 type ModalType = "alterarPlano" | "cancelar" | null;
+
+// Initial mock subscriptions
+const INITIAL_SUBSCRIPTIONS: Sub[] = [
+  { id: "s1", empresa: "Marmita Boa", empresaId: "marmita-boa", plano: "Pro", status: "ativo", dataInicio: "2025-08-15", proxCobranca: "2025-11-05" },
+  { id: "s2", empresa: "Fit Express", empresaId: "fit-express", plano: "Basic", status: "atrasado", dataInicio: "2025-09-01", proxCobranca: "2025-10-01" },
+  { id: "s3", empresa: "Delivery Top", empresaId: "delivery-top", plano: "Pro", status: "ativo", dataInicio: "2025-10-01", proxCobranca: "2025-11-01" },
+  { id: "s4", empresa: "Sabor da Casa", empresaId: "sabor-da-casa", plano: "Basic", status: "cancelado", dataInicio: "2025-07-10" },
+  { id: "s5", empresa: "Pizza Express", empresaId: "pizza-express", plano: "Pro", status: "ativo", dataInicio: "2025-10-06", proxCobranca: "2025-11-06" },
+  { id: "s6", empresa: "Burger King", empresaId: "burger-king", plano: "Pro", status: "ativo", dataInicio: "2025-10-06", proxCobranca: "2025-11-06" },
+];
 
 export default function SubscriptionsPage() {
   const [q, setQ] = useState("");
@@ -26,12 +39,45 @@ export default function SubscriptionsPage() {
   const [loading, setLoading] = useState(false);
   const { push } = useToast();
 
-  const [list, setList] = useState<Sub[]>([
-    { id: "s1", empresa: "Marmita Boa", plano: "Pro", status: "ativo", proxCobranca: "2025-11-05" },
-    { id: "s2", empresa: "Fit Express", plano: "Basic", status: "atrasado", proxCobranca: "2025-10-01" },
-    { id: "s3", empresa: "Delivery Top", plano: "Pro", status: "ativo", proxCobranca: "2025-11-01" },
-    { id: "s4", empresa: "Sabor da Casa", plano: "Basic", status: "cancelado" },
-  ]);
+  // Initialize subscriptions from localStorage or use defaults
+  const [list, setList] = useState<Sub[]>(() => {
+    const stored = localStorage.getItem("deliverei_subscriptions");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        // Merge with initial subscriptions (in case new ones were added)
+        const existingIds = parsed.map((s: Sub) => s.empresaId);
+        const newSubs = INITIAL_SUBSCRIPTIONS.filter(s => !existingIds.includes(s.empresaId));
+        return [...parsed, ...newSubs];
+      } catch {
+        return INITIAL_SUBSCRIPTIONS;
+      }
+    }
+    return INITIAL_SUBSCRIPTIONS;
+  });
+
+  // Listen for subscription updates from Companies page
+  useEffect(() => {
+    const handleSubscriptionsUpdate = () => {
+      const stored = localStorage.getItem("deliverei_subscriptions");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setList(parsed);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    };
+
+    window.addEventListener("subscriptions-updated", handleSubscriptionsUpdate);
+    return () => window.removeEventListener("subscriptions-updated", handleSubscriptionsUpdate);
+  }, []);
+
+  // Save to localStorage whenever list changes
+  useEffect(() => {
+    localStorage.setItem("deliverei_subscriptions", JSON.stringify(list));
+  }, [list]);
 
   const filtered = useMemo(
     () =>
@@ -150,6 +196,7 @@ export default function SubscriptionsPage() {
               <th className="p-3 text-left text-sm text-[#4B5563]">Empresa</th>
               <th className="p-3 text-left text-sm text-[#4B5563]">Plano</th>
               <th className="p-3 text-left text-sm text-[#4B5563]">Status</th>
+              <th className="p-3 text-left text-sm text-[#4B5563]">Data de início</th>
               <th className="p-3 text-left text-sm text-[#4B5563]">Próxima cobrança</th>
               <th className="p-3 text-right text-sm text-[#4B5563]">Ações</th>
             </tr>
@@ -172,6 +219,7 @@ export default function SubscriptionsPage() {
                     {s.status}
                   </Badge>
                 </td>
+                <td className="p-3">{s.dataInicio || "—"}</td>
                 <td className="p-3">{s.proxCobranca || "—"}</td>
                 <td className="p-3 text-right">
                   <button 
@@ -193,7 +241,7 @@ export default function SubscriptionsPage() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td className="p-6 text-center text-[#4B5563]" colSpan={5}>
+                <td className="p-6 text-center text-[#4B5563]" colSpan={6}>
                   Nenhuma assinatura.
                 </td>
               </tr>
