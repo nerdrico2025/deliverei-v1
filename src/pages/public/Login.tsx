@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
@@ -25,6 +26,7 @@ export default function Login() {
       return;
     }
 
+    // Direct redirect based on role - no delay
     if (user.role === "superadmin") {
       navigate("/admin/super", { replace: true });
     } else if (user.role === "empresa") {
@@ -42,6 +44,7 @@ export default function Login() {
     try {
       await login(email, password);
       push({ message: "Login realizado com sucesso!", tone: "success" });
+      // Navigation will happen automatically via useEffect when user state updates
     } catch (error) {
       push({ message: "Erro ao fazer login. Tente novamente.", tone: "error" });
     } finally {

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from "react";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { SuperAdminSidebar } from "../../../components/layout/SuperAdminSidebar";
@@ -21,6 +22,8 @@ export default function CompaniesPage() {
     { id: "2", nome: "Fit Express", plano: "Basic", status: "ativo", dataCriacao: "2025-09-01" },
     { id: "3", nome: "Delivery Top", plano: "Pro", status: "trial", dataCriacao: "2025-10-01" },
     { id: "4", nome: "Sabor da Casa", plano: "Basic", status: "inativo", dataCriacao: "2025-07-10" },
+    { id: "5", nome: "Pizza Express", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06" },
+    { id: "6", nome: "Burger King", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06" },
   ]);
 
   const filtered = useMemo(

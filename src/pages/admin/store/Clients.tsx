@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from "react";
+
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { X } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
 
 type Client = {
   id: string;
@@ -14,26 +16,43 @@ type Client = {
   status: "ativo" | "inativo";
   ultCompra?: string;
   ltv?: number;
+  empresaId: string;
 };
+
+// Mock data with empresaId for data isolation
+const MOCK_CLIENTS: Client[] = [
+  { id: "c1", nome: "Maria Silva", whatsapp: "(11) 99999-0000", email: "maria@email.com", status: "ativo", ultCompra: "2025-10-03", ltv: 560, empresaId: "pizza-express" },
+  { id: "c2", nome: "João Silva", whatsapp: "(11) 98888-1111", email: "cliente@exemplo.com", status: "ativo", ltv: 120, empresaId: "pizza-express" },
+  { id: "c3", nome: "Ana Costa", whatsapp: "(11) 97777-2222", email: "ana@email.com", status: "inativo", ltv: 89, empresaId: "pizza-express" },
+  { id: "c4", nome: "Carlos Mendes", whatsapp: "(11) 96666-3333", email: "carlos@email.com", status: "ativo", ultCompra: "2025-10-05", ltv: 340, empresaId: "burger-king" },
+  { id: "c5", nome: "Fernanda Lima", whatsapp: "(11) 95555-4444", email: "fernanda@email.com", status: "ativo", ltv: 210, empresaId: "burger-king" },
+];
 
 export default function ClientsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"" | "ativo" | "inativo">("");
-  const [list] = useState<Client[]>([
-    { id: "c1", nome: "Maria Silva", whatsapp: "(11) 99999-0000", email: "maria@email.com", status: "ativo", ultCompra: "2025-10-03", ltv: 560 },
-    { id: "c2", nome: "João Souza", whatsapp: "(11) 98888-1111", status: "ativo", ltv: 120 },
-    { id: "c3", nome: "Ana Costa", whatsapp: "(11) 97777-2222", email: "ana@email.com", status: "inativo", ltv: 89 },
-  ]);
+  const [allClients, setAllClients] = useState<Client[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
+  useEffect(() => {
+    // Filter clients by empresaId for data isolation
+    if (user?.empresaId) {
+      const filteredClients = MOCK_CLIENTS.filter(c => c.empresaId === user.empresaId);
+      setAllClients(filteredClients);
+    } else {
+      setAllClients([]);
+    }
+  }, [user?.empresaId]);
+
   const filtered = useMemo(() => {
-    return list.filter(
+    return allClients.filter(
       (c) =>
         (status ? c.status === status : true) &&
         (q ? c.nome.toLowerCase().includes(q.toLowerCase()) || c.whatsapp.includes(q) : true)
     );
-  }, [list, q, status]);
+  }, [allClients, q, status]);
 
   return (
     <DashboardShell sidebar={<StoreSidebar />}>
