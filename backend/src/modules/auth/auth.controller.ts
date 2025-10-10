@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, SignupDto, RefreshTokenDto } from './dto';
+import { LoginDto, SignupDto, RefreshTokenDto, CreateAccountFromOrderDto } from './dto';
 import { Public } from '../../decorators/public.decorator';
 
 @Controller('auth')
@@ -19,6 +19,13 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async signup(@Body() signupDto: SignupDto) {
     return this.authService.signup(signupDto);
+  }
+
+  @Public()
+  @Post('create-account-from-order')
+  @HttpCode(HttpStatus.CREATED)
+  async createAccountFromOrder(@Body() createAccountDto: CreateAccountFromOrderDto) {
+    return this.authService.createAccountFromOrder(createAccountDto);
   }
 
   @Public()

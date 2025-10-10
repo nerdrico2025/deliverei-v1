@@ -54,6 +54,8 @@ model Usuario {
   email     String   @unique
   senha     String
   nome      String
+  telefone  String?
+  cpf       String?
   role      Role     @default(CLIENTE)
   empresaId String?
   ativo     Boolean  @default(true)
@@ -65,6 +67,7 @@ model Usuario {
   carrinho     Carrinho?
   avaliacoes   Avaliacao[]
   notificacoes Notificacao[]
+  endereco     Endereco?
 
   @@index([empresaId])
   @@map("usuarios")
@@ -333,4 +336,22 @@ model MensagemWhatsApp {
   @@index([pedidoId])
   @@index([status])
   @@map("mensagens_whatsapp")
+}
+
+model Endereco {
+  id          String   @id @default(uuid())
+  usuarioId   String   @unique @map("usuario_id")
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  cep         String?
+  rua         String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  uf          String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([usuarioId])
+  @@map("enderecos")
 }

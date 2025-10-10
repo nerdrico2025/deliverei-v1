@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { LoginDto, SignupDto } from './dto';
+import { LoginDto, SignupDto, CreateAccountFromOrderDto } from './dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -202,6 +202,86 @@ export class AuthService {
     });
 
     return token;
+  }
+
+  async createAccountFromOrder(createAccountDto: CreateAccountFromOrderDto) {
+    // Verificar se email já existe
+    const usuarioExistente = await this.prisma.usuario.findUnique({
+      where: { email: createAccountDto.email },
+    });
+
+    if (usuarioExistente) {
+      throw new ConflictException('Email já cadastrado');
+    }
+
+    // Verificar se empresa existe
+    const empresa = await this.prisma.empresa.findUnique({
+      where: { id: createAccountDto.empresaId },
+    });
+
+    if (!empresa) {
+      throw new BadRequestException('Empresa não encontrada');
+    }
+
+    if (!empresa.ativo) {
+      throw new BadRequestException('Empresa inativa');
+    }
+
+    // Hash da senha
+    const hashedPassword = await bcrypt.hash(createAccountDto.senha, 10);
+
+    // Criar usuário
+    const usuario = await this.prisma.usuario.create({
+      data: {
+        email: createAccountDto.email,
+        senha: hashedPassword,
+        nome: createAccountDto.nome,
+        telefone: createAccountDto.telefone,
+        cpf: createAccountDto.cpf,
+        empresaId: createAccountDto.empresaId,
+        role: 'CLIENTE',
+        ...(createAccountDto.endereco && {
+          endereco: {
+            create: {
+              cep: createAccountDto.endereco.cep,
+              rua: createAccountDto.endereco.rua,
+              numero: createAccountDto.endereco.numero,
+              complemento: createAccountDto.endereco.complemento,
+              bairro: createAccountDto.endereco.bairro,
+              cidade: createAccountDto.endereco.cidade,
+              uf: createAccountDto.endereco.uf,
+            },
+          },
+        }),
+      },
+      include: { empresa: true, endereco: true },
+    });
+
+    const payload: JwtPayload = {
+      sub: usuario.id,
+      email: usuario.email,
+      role: usuario.role,
+      empresaId: usuario.empresaId,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = await this.generateRefreshToken(usuario.id);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: usuario.id,
+        email: usuario.email,
+        nome: usuario.nome,
+        telefone: usuario.telefone,
+        cpf: usuario.cpf,
+        role: usuario.role,
+        empresaId: usuario.empresaId,
+        empresa: usuario.empresa,
+        endereco: usuario.endereco,
+      },
+    };
   }
 
   private parseTimeToMs(time: string): number {
