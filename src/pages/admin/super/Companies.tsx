@@ -1,10 +1,12 @@
 
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { SuperAdminSidebar } from "../../../components/layout/SuperAdminSidebar";
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { Badge } from "../../../components/common/Badge";
+import { useAuth } from "../../../auth/AuthContext";
 
 type Company = {
   id: string;
@@ -12,18 +14,22 @@ type Company = {
   plano: string;
   status: "ativo" | "inativo" | "trial";
   dataCriacao: string;
+  empresaId?: string;
 };
 
 export default function CompaniesPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"" | Company["status"]>("");
+  const navigate = useNavigate();
+  const { impersonate } = useAuth();
+  
   const [list] = useState<Company[]>([
-    { id: "1", nome: "Marmita Boa", plano: "Pro", status: "ativo", dataCriacao: "2025-08-15" },
-    { id: "2", nome: "Fit Express", plano: "Basic", status: "ativo", dataCriacao: "2025-09-01" },
-    { id: "3", nome: "Delivery Top", plano: "Pro", status: "trial", dataCriacao: "2025-10-01" },
-    { id: "4", nome: "Sabor da Casa", plano: "Basic", status: "inativo", dataCriacao: "2025-07-10" },
-    { id: "5", nome: "Pizza Express", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06" },
-    { id: "6", nome: "Burger King", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06" },
+    { id: "1", nome: "Marmita Boa", plano: "Pro", status: "ativo", dataCriacao: "2025-08-15", empresaId: "marmita-boa" },
+    { id: "2", nome: "Fit Express", plano: "Basic", status: "ativo", dataCriacao: "2025-09-01", empresaId: "fit-express" },
+    { id: "3", nome: "Delivery Top", plano: "Pro", status: "trial", dataCriacao: "2025-10-01", empresaId: "delivery-top" },
+    { id: "4", nome: "Sabor da Casa", plano: "Basic", status: "inativo", dataCriacao: "2025-07-10", empresaId: "sabor-da-casa" },
+    { id: "5", nome: "Pizza Express", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06", empresaId: "pizza-express" },
+    { id: "6", nome: "Burger King", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06", empresaId: "burger-king" },
   ]);
 
   const filtered = useMemo(
@@ -36,8 +42,24 @@ export default function CompaniesPage() {
     [list, q, status]
   );
 
+  const handleViewDetails = (company: Company) => {
+    if (!company.empresaId) {
+      console.error("Company does not have an empresaId");
+      return;
+    }
+    
+    // Store the company slug for backend API calls
+    localStorage.setItem("deliverei_store_slug", company.empresaId);
+    
+    // Impersonate the company
+    impersonate(company.empresaId, company.nome);
+    
+    // Navigate to the company's admin dashboard
+    navigate("/admin/store");
+  };
+
   return (
-    <DashboardShell sidebar={<SuperAdminSidebar currentPath="/admin/super/companies" />}>
+    <DashboardShell sidebar={<SuperAdminSidebar />}>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-xl font-semibold text-[#1F2937]">Empresas</h1>
         <div className="flex gap-2">
@@ -87,8 +109,12 @@ export default function CompaniesPage() {
                 </td>
                 <td className="p-3">{c.dataCriacao}</td>
                 <td className="p-3 text-right">
-                  <button className="text-[#D22630] hover:underline mr-3">Ver detalhes</button>
-                  <button className="text-[#DC2626] hover:underline">Desativar</button>
+                  <button 
+                    onClick={() => handleViewDetails(c)}
+                    className="text-[#D22630] hover:underline"
+                  >
+                    Ver detalhes
+                  </button>
                 </td>
               </tr>
             ))}

@@ -18,35 +18,44 @@ const NotificacoesContext = createContext<NotificacoesContextData>({} as Notific
 export const NotificacoesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(false);
+  const [backendAvailable, setBackendAvailable] = useState(true);
   const { user } = useAuth();
 
   const fetchNotificacoes = useCallback(async () => {
-    if (!user) return;
-    
-    // Skip API calls if backend is not available (localhost in production)
-    // This prevents console spam from failed requests
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocalhost) {
-      // Use mock data for development without backend
-      return;
-    }
+    if (!user || !backendAvailable) return;
     
     try {
       setLoading(true);
       const data = await notificacoesApi.listar();
       setNotificacoes(data);
-    } catch (error) {
-      // Silently fail - don't spam console with errors when backend is unavailable
-      // Only log in development mode
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Backend de notificações não disponível');
+      setBackendAvailable(true);
+    } catch (error: any) {
+      // Check if it's a connection error
+      const isConnectionError = 
+        error?.message?.includes('ERR_CONNECTION_REFUSED') ||
+        error?.message?.includes('Network Error') ||
+        error?.message?.includes('Failed to fetch') ||
+        error?.code === 'ERR_NETWORK';
+      
+      if (isConnectionError) {
+        // Mark backend as unavailable to stop further attempts
+        setBackendAvailable(false);
+        // Silently fail - don't spam console
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Backend de notificações não disponível - requisições suspensas');
+        }
+      } else {
+        // Log other types of errors
+        console.error('Erro ao buscar notificações:', error);
       }
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, backendAvailable]);
 
   const marcarLida = async (id: string) => {
+    if (!backendAvailable) return;
+    
     try {
       await notificacoesApi.marcarLida(id);
       setNotificacoes(prev =>
@@ -58,6 +67,8 @@ export const NotificacoesProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const marcarTodasLidas = async () => {
+    if (!backendAvailable) return;
+    
     try {
       await notificacoesApi.marcarTodasLidas();
       setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })));
@@ -67,6 +78,8 @@ export const NotificacoesProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const deletarNotificacao = async (id: string) => {
+    if (!backendAvailable) return;
+    
     try {
       await notificacoesApi.deletar(id);
       setNotificacoes(prev => prev.filter(n => n.id !== id));
@@ -77,14 +90,14 @@ export const NotificacoesProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
-  // Polling a cada 30 segundos
+  // Polling a cada 30 segundos - only if backend is available
   useEffect(() => {
-    if (user) {
+    if (user && backendAvailable) {
       fetchNotificacoes();
       const interval = setInterval(fetchNotificacoes, 30000);
       return () => clearInterval(interval);
     }
-  }, [user, fetchNotificacoes]);
+  }, [user, backendAvailable, fetchNotificacoes]);
 
   return (
     <NotificacoesContext.Provider
