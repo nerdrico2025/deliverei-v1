@@ -49,22 +49,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [state]);
 
   const login = async (email: string, _password: string) => {
-    const role: UserRole = email.includes("+super")
-      ? "superadmin"
-      : email.includes("+suporte")
-      ? "suporte"
-      : email.includes("+cliente")
-      ? "cliente"
-      : "empresa";
+    // Determine role and company based on email
+    let role: UserRole;
+    let empresaId: string | null = null;
+    let name: string;
+
+    if (email === "admin@deliverei.com.br") {
+      role = "superadmin";
+      name = "Super Administrador";
+    } else if (email === "admin@pizza-express.com") {
+      role = "empresa";
+      empresaId = "pizza-express";
+      name = "Admin Pizza Express";
+    } else if (email === "admin@burger-king.com") {
+      role = "empresa";
+      empresaId = "burger-king";
+      name = "Admin Burger King";
+    } else if (email === "cliente@exemplo.com") {
+      role = "cliente";
+      name = "João Silva";
+    } else if (email.includes("+super")) {
+      role = "superadmin";
+      name = email.split("@")[0];
+    } else if (email.includes("+suporte")) {
+      role = "suporte";
+      name = email.split("@")[0];
+    } else if (email.includes("+cliente")) {
+      role = "cliente";
+      name = email.split("@")[0];
+    } else {
+      role = "empresa";
+      empresaId = "default-company";
+      name = email.split("@")[0];
+    }
 
     const mockUser: AuthUser = {
       id: "u_" + Math.random().toString(36).slice(2),
-      name: email.split("@")[0],
+      name,
       email,
       role,
-      empresaId: role === "empresa" ? "emp_123" : null,
+      empresaId,
       lastLogin: new Date().toISOString(),
     };
+
+    // Store company slug in localStorage for company admins
+    if (role === "empresa" && empresaId) {
+      localStorage.setItem("deliverei_store_slug", empresaId);
+    }
 
     setState({ isAuth: true, user: mockUser, token: "mock-jwt-token" });
   };
