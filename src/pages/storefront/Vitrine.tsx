@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { StorefrontHeader } from "../../components/layout/StorefrontHeader";
 import { ProductCard } from "../../components/commerce/ProductCard";
 import { CartDrawer } from "../../components/commerce/CartDrawer";
@@ -48,6 +48,7 @@ async function fetchProducts(page: number, pageSize: number): Promise<{ items: P
 
 export default function Vitrine() {
   const navigate = useNavigate();
+  const { slug } = useParams<{ slug: string }>();
   const { items: cartItems, add, updateQty, count, lastAddedId } = useCart();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -112,6 +113,7 @@ export default function Vitrine() {
     <>
       <StorefrontHeader
         storeName="Loja Exemplo"
+        storeSlug={slug}
         onCartClick={() => setCartOpen(true)}
         cartCount={count}
       />

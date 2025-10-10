@@ -9,6 +9,7 @@ import LoginBackend from "../pages/public/LoginBackend";
 import Vitrine from "../pages/storefront/Vitrine";
 import Checkout from "../pages/storefront/Checkout";
 import OrderConfirmation from "../pages/storefront/OrderConfirmation";
+import ClientLogin from "../pages/storefront/ClientLogin";
 import VitrineBackend from "../pages/storefront/VitrineBackend";
 import CheckoutBackend from "../pages/storefront/CheckoutBackend";
 import OrderConfirmationBackend from "../pages/storefront/OrderConfirmationBackend";
@@ -65,6 +66,7 @@ export default function AppRouter() {
       <Route path="/storefront/order-confirmation-backend" element={<OrderConfirmationBackend />} />
 
       <Route path="/loja/:slug" element={<Vitrine />} />
+      <Route path="/loja/:slug/login" element={<ClientLogin />} />
       <Route path="/loja/:slug/checkout" element={<Checkout />} />
 
       <Route
