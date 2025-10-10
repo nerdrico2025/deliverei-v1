@@ -1,5 +1,6 @@
 
-import React, { useMemo, useState } from "react";
+
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { SuperAdminSidebar } from "../../../components/layout/SuperAdminSidebar";
@@ -8,7 +9,7 @@ import { Input } from "../../../components/common/Input";
 import { Badge } from "../../../components/common/Badge";
 import { useAuth } from "../../../auth/AuthContext";
 import { useToast } from "../../../ui/feedback/ToastContext";
-import { X } from "lucide-react";
+import { X, Copy, Check } from "lucide-react";
 
 type Company = {
   id: string;
@@ -25,7 +26,26 @@ type NovaEmpresaForm = {
   telefone: string;
   plano: "Basic" | "Pro" | "Enterprise";
   status: "ativo" | "inativo";
+  senha: string;
+  confirmarSenha: string;
 };
+
+type CreatedCompanyInfo = {
+  empresaId: string;
+  email: string;
+  senha: string;
+  nome: string;
+} | null;
+
+// Initial mock companies
+const INITIAL_COMPANIES: Company[] = [
+  { id: "1", nome: "Marmita Boa", plano: "Pro", status: "ativo", dataCriacao: "2025-08-15", empresaId: "marmita-boa" },
+  { id: "2", nome: "Fit Express", plano: "Basic", status: "ativo", dataCriacao: "2025-09-01", empresaId: "fit-express" },
+  { id: "3", nome: "Delivery Top", plano: "Pro", status: "trial", dataCriacao: "2025-10-01", empresaId: "delivery-top" },
+  { id: "4", nome: "Sabor da Casa", plano: "Basic", status: "inativo", dataCriacao: "2025-07-10", empresaId: "sabor-da-casa" },
+  { id: "5", nome: "Pizza Express", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06", empresaId: "pizza-express" },
+  { id: "6", nome: "Burger King", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06", empresaId: "burger-king" },
+];
 
 // Helper function to generate unique empresaId
 const generateUniqueEmpresaId = (nome: string, existingIds: string[]): string => {
@@ -59,6 +79,9 @@ export default function CompaniesPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"" | Company["status"]>("");
   const [showModal, setShowModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdCompanyInfo, setCreatedCompanyInfo] = useState<CreatedCompanyInfo>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { impersonate } = useAuth();
@@ -70,16 +93,51 @@ export default function CompaniesPage() {
     telefone: "",
     plano: "Basic",
     status: "ativo",
+    senha: "",
+    confirmarSenha: "",
   });
 
-  const [list, setList] = useState<Company[]>([
-    { id: "1", nome: "Marmita Boa", plano: "Pro", status: "ativo", dataCriacao: "2025-08-15", empresaId: "marmita-boa" },
-    { id: "2", nome: "Fit Express", plano: "Basic", status: "ativo", dataCriacao: "2025-09-01", empresaId: "fit-express" },
-    { id: "3", nome: "Delivery Top", plano: "Pro", status: "trial", dataCriacao: "2025-10-01", empresaId: "delivery-top" },
-    { id: "4", nome: "Sabor da Casa", plano: "Basic", status: "inativo", dataCriacao: "2025-07-10", empresaId: "sabor-da-casa" },
-    { id: "5", nome: "Pizza Express", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06", empresaId: "pizza-express" },
-    { id: "6", nome: "Burger King", plano: "Pro", status: "ativo", dataCriacao: "2025-10-06", empresaId: "burger-king" },
-  ]);
+  // CRITICAL FIX: Initialize companies from localStorage or use defaults
+  const [list, setList] = useState<Company[]>(() => {
+    const stored = localStorage.getItem("deliverei_companies");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        // Merge with initial companies (in case new ones were added)
+        const existingIds = parsed.map((c: Company) => c.empresaId);
+        const newCompanies = INITIAL_COMPANIES.filter(c => !existingIds.includes(c.empresaId));
+        return [...parsed, ...newCompanies];
+      } catch {
+        return INITIAL_COMPANIES;
+      }
+    }
+    return INITIAL_COMPANIES;
+  });
+
+  // CRITICAL FIX: Listen for company updates from other sources
+  useEffect(() => {
+    const handleCompaniesUpdate = () => {
+      const stored = localStorage.getItem("deliverei_companies");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setList(parsed);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    };
+
+    window.addEventListener("companies-updated", handleCompaniesUpdate);
+    return () => window.removeEventListener("companies-updated", handleCompaniesUpdate);
+  }, []);
+
+  // CRITICAL FIX: Save to localStorage whenever list changes
+  useEffect(() => {
+    localStorage.setItem("deliverei_companies", JSON.stringify(list));
+    // Dispatch event to notify other components
+    window.dispatchEvent(new CustomEvent("companies-updated"));
+  }, [list]);
 
   // State to manage subscriptions (shared with Subscriptions page via localStorage for demo)
   const getSubscriptions = () => {
@@ -133,6 +191,8 @@ export default function CompaniesPage() {
       telefone: "",
       plano: "Basic",
       status: "ativo",
+      senha: "",
+      confirmarSenha: "",
     });
     setShowModal(true);
   };
@@ -145,11 +205,29 @@ export default function CompaniesPage() {
       telefone: "",
       plano: "Basic",
       status: "ativo",
+      senha: "",
+      confirmarSenha: "",
     });
+  };
+
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
+    setCreatedCompanyInfo(null);
+    setCopiedField(null);
   };
 
   const handleInputChange = (field: keyof NovaEmpresaForm, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCopyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      push({ message: "Erro ao copiar", tone: "error" });
+    }
   };
 
   const validateForm = (): boolean => {
@@ -167,6 +245,18 @@ export default function CompaniesPage() {
     }
     if (!formData.telefone.trim()) {
       push({ message: "Telefone é obrigatório", tone: "error" });
+      return false;
+    }
+    if (!formData.senha.trim()) {
+      push({ message: "Senha é obrigatória", tone: "error" });
+      return false;
+    }
+    if (formData.senha.length < 6) {
+      push({ message: "Senha deve ter no mínimo 6 caracteres", tone: "error" });
+      return false;
+    }
+    if (formData.senha !== formData.confirmarSenha) {
+      push({ message: "As senhas não coincidem", tone: "error" });
       return false;
     }
     return true;
@@ -189,7 +279,7 @@ export default function CompaniesPage() {
       
       // Create new company
       const newCompany: Company = {
-        id: String(list.length + 1),
+        id: String(Date.now()), // Use timestamp for unique ID
         nome: formData.nome,
         plano: formData.plano,
         status: formData.status,
@@ -197,6 +287,7 @@ export default function CompaniesPage() {
         empresaId,
       };
       
+      // CRITICAL FIX: Update list state which will trigger localStorage save via useEffect
       setList(prev => [...prev, newCompany]);
       
       // CRITICAL FIX: Create subscription entry for the new company
@@ -218,8 +309,25 @@ export default function CompaniesPage() {
       const existingSubscriptions = getSubscriptions();
       saveSubscriptions([...existingSubscriptions, newSubscription]);
       
+      // Store company credentials (for demo purposes - in production, this would be handled securely)
+      const credentials = {
+        empresaId,
+        email: formData.email,
+        senha: formData.senha,
+        nome: formData.nome,
+      };
+      
+      // Save credentials to localStorage (for demo)
+      const existingCredentials = JSON.parse(localStorage.getItem("deliverei_credentials") || "[]");
+      existingCredentials.push(credentials);
+      localStorage.setItem("deliverei_credentials", JSON.stringify(existingCredentials));
+      
+      // Set created company info for success modal
+      setCreatedCompanyInfo(credentials);
+      
       push({ message: "Empresa e assinatura criadas com sucesso!", tone: "success" });
       handleCloseModal();
+      setShowSuccessModal(true);
     } catch (error) {
       push({ message: "Erro ao criar empresa", tone: "error" });
     } finally {
@@ -343,6 +451,9 @@ export default function CompaniesPage() {
                   placeholder="admin@empresa.com"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Este email será usado pelo admin da loja para fazer login
+                </p>
               </div>
 
               <div>
@@ -355,6 +466,37 @@ export default function CompaniesPage() {
                   onChange={(e) => handleInputChange('telefone', e.target.value)}
                   placeholder="(11) 99999-9999"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Senha Inicial *
+                </label>
+                <Input
+                  type="password"
+                  value={formData.senha}
+                  onChange={(e) => handleInputChange('senha', e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                  minLength={6}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Esta senha será usada pelo admin da loja para fazer login
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirmar Senha *
+                </label>
+                <Input
+                  type="password"
+                  value={formData.confirmarSenha}
+                  onChange={(e) => handleInputChange('confirmarSenha', e.target.value)}
+                  placeholder="Digite a senha novamente"
+                  required
+                  minLength={6}
                 />
               </div>
 
@@ -406,6 +548,123 @@ export default function CompaniesPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal with Credentials */}
+      {showSuccessModal && createdCompanyInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Empresa Criada com Sucesso! 🎉</h2>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-800 mb-2">
+                  <strong>Importante:</strong> Anote ou copie as credenciais abaixo. O admin da loja precisará delas para fazer login.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome da Empresa
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono text-sm">
+                    {createdCompanyInfo.nome}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ID da Empresa (Slug)
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono text-sm">
+                    {createdCompanyInfo.empresaId}
+                  </div>
+                  <button
+                    onClick={() => handleCopyToClipboard(createdCompanyInfo.empresaId, 'empresaId')}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    title="Copiar"
+                  >
+                    {copiedField === 'empresaId' ? (
+                      <Check className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email de Login
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono text-sm">
+                    {createdCompanyInfo.email}
+                  </div>
+                  <button
+                    onClick={() => handleCopyToClipboard(createdCompanyInfo.email, 'email')}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    title="Copiar"
+                  >
+                    {copiedField === 'email' ? (
+                      <Check className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Senha
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono text-sm">
+                    {createdCompanyInfo.senha}
+                  </div>
+                  <button
+                    onClick={() => handleCopyToClipboard(createdCompanyInfo.senha, 'senha')}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    title="Copiar"
+                  >
+                    {copiedField === 'senha' ? (
+                      <Check className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Próximos passos:</strong>
+                </p>
+                <ol className="text-sm text-blue-800 mt-2 ml-4 list-decimal space-y-1">
+                  <li>Envie as credenciais acima para o admin da loja</li>
+                  <li>O admin deve acessar a página de login</li>
+                  <li>Fazer login com o email e senha fornecidos</li>
+                  <li>Recomende trocar a senha no primeiro acesso</li>
+                </ol>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  onClick={handleCloseSuccessModal}
+                >
+                  Fechar
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
