@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { PublicHeader } from "../../components/layout/PublicHeader";
@@ -12,31 +12,10 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const { push } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    if (!user) return;
-
-    const state = location.state as any;
-    if (state?.from) {
-      navigate(state.from, { replace: true });
-      return;
-    }
-
-    // Direct redirect based on role - no delay
-    if (user.role === "superadmin") {
-      navigate("/admin/super", { replace: true });
-    } else if (user.role === "empresa") {
-      navigate("/admin/store", { replace: true });
-    } else if (user.role === "suporte") {
-      navigate("/support/tickets", { replace: true });
-    } else {
-      navigate("/storefront", { replace: true });
-    }
-  }, [user, navigate, location.state]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +23,34 @@ export default function Login() {
     try {
       await login(email, password);
       push({ message: "Login realizado com sucesso!", tone: "success" });
-      // Navigation will happen automatically via useEffect when user state updates
+      
+      // Check if there's a redirect location from RequireAuth
+      const state = location.state as any;
+      if (state?.from) {
+        navigate(state.from, { replace: true });
+        return;
+      }
+
+      // Determine redirect based on email/role
+      // This logic mirrors the AuthContext login logic
+      let redirectPath = "/storefront"; // default for cliente
+      
+      if (email === "admin@deliverei.com.br") {
+        redirectPath = "/admin/super";
+      } else if (email === "admin@pizza-express.com" || email === "admin@burger-king.com") {
+        redirectPath = "/admin/store";
+      } else if (email.includes("+super")) {
+        redirectPath = "/admin/super";
+      } else if (email.includes("+suporte")) {
+        redirectPath = "/support/tickets";
+      } else if (email.includes("+cliente")) {
+        redirectPath = "/storefront";
+      } else if (!email.includes("cliente@")) {
+        // Assume empresa for other emails
+        redirectPath = "/admin/store";
+      }
+      
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       push({ message: "Erro ao fazer login. Tente novamente.", tone: "error" });
     } finally {
