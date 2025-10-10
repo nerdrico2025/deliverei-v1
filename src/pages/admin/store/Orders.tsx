@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
+
+import React, { useMemo, useState, useEffect } from "react";
 import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
 import { X } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
 
 type OrderItem = {
   productId: string;
@@ -19,6 +21,7 @@ type Order = {
   status: "recebido" | "aprovado" | "em_preparo" | "saiu_entrega" | "entregue" | "cancelado";
   criadoEm: string;
   itens: OrderItem[];
+  empresaId: string;
 };
 
 const statusOptions: Order["status"][] = [
@@ -30,48 +33,87 @@ const statusOptions: Order["status"][] = [
   "cancelado",
 ];
 
+// Mock data with empresaId for data isolation
+const MOCK_ORDERS: Order[] = [
+  {
+    id: "1001",
+    cliente: "Maria Silva",
+    total: 72.3,
+    pagamento: "aprovado",
+    status: "recebido",
+    criadoEm: "2025-10-05 12:20",
+    itens: [
+      { productId: "p1", nome: "Pizza Margherita", qtd: 2, preco: 35.9 },
+      { productId: "p2", nome: "Refrigerante Coca-Cola 2L", qtd: 1, preco: 8.9 },
+    ],
+    empresaId: "pizza-express",
+  },
+  {
+    id: "1002",
+    cliente: "João Silva",
+    total: 79.8,
+    pagamento: "pendente",
+    status: "em_preparo",
+    criadoEm: "2025-10-05 12:30",
+    itens: [{ productId: "p3", nome: "Pizza Calabresa", qtd: 2, preco: 39.9 }],
+    empresaId: "pizza-express",
+  },
+  {
+    id: "1003",
+    cliente: "Ana Costa",
+    total: 42.9,
+    pagamento: "aprovado",
+    status: "saiu_entrega",
+    criadoEm: "2025-10-05 11:45",
+    itens: [
+      { productId: "p4", nome: "Pizza Portuguesa", qtd: 1, preco: 42.9 },
+    ],
+    empresaId: "pizza-express",
+  },
+  {
+    id: "2001",
+    cliente: "Carlos Mendes",
+    total: 61.8,
+    pagamento: "aprovado",
+    status: "recebido",
+    criadoEm: "2025-10-05 13:15",
+    itens: [
+      { productId: "p6", nome: "Whopper", qtd: 2, preco: 28.9 },
+      { productId: "p8", nome: "Batata Frita Grande", qtd: 1, preco: 12.9 },
+    ],
+    empresaId: "burger-king",
+  },
+  {
+    id: "2002",
+    cliente: "Fernanda Lima",
+    total: 32.9,
+    pagamento: "aprovado",
+    status: "entregue",
+    criadoEm: "2025-10-05 10:30",
+    itens: [{ productId: "p7", nome: "Mega Stacker 2.0", qtd: 1, preco: 32.9 }],
+    empresaId: "burger-king",
+  },
+];
+
 export default function OrdersPage() {
+  const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState<"" | Order["status"]>("");
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: "1001",
-      cliente: "Maria Silva",
-      total: 72.3,
-      pagamento: "aprovado",
-      status: "recebido",
-      criadoEm: "2025-10-05 12:20",
-      itens: [
-        { productId: "p1", nome: "Marmita Fit Frango", qtd: 2, preco: 29.9 },
-        { productId: "p2", nome: "Suco Detox", qtd: 1, preco: 12.5 },
-      ],
-    },
-    {
-      id: "1002",
-      cliente: "João Souza",
-      total: 45.0,
-      pagamento: "pendente",
-      status: "em_preparo",
-      criadoEm: "2025-10-05 12:30",
-      itens: [{ productId: "p3", nome: "Marmita Veggie", qtd: 1, preco: 45.0 }],
-    },
-    {
-      id: "1003",
-      cliente: "Ana Costa",
-      total: 56.8,
-      pagamento: "aprovado",
-      status: "saiu_entrega",
-      criadoEm: "2025-10-05 11:45",
-      itens: [
-        { productId: "p4", nome: "Marmita Tradicional", qtd: 2, preco: 22.5 },
-        { productId: "p5", nome: "Refrigerante", qtd: 2, preco: 5.9 },
-      ],
-    },
-  ]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [drawer, setDrawer] = useState<{ open: boolean; order?: Order }>({ open: false });
 
+  useEffect(() => {
+    // Filter orders by empresaId for data isolation
+    if (user?.empresaId) {
+      const filteredOrders = MOCK_ORDERS.filter(o => o.empresaId === user.empresaId);
+      setAllOrders(filteredOrders);
+    } else {
+      setAllOrders([]);
+    }
+  }, [user?.empresaId]);
+
   const filtered = useMemo(
-    () => (filterStatus ? orders.filter((o) => o.status === filterStatus) : orders),
-    [orders, filterStatus]
+    () => (filterStatus ? allOrders.filter((o) => o.status === filterStatus) : allOrders),
+    [allOrders, filterStatus]
   );
 
   const openDetails = (o: Order) => setDrawer({ open: true, order: o });
@@ -81,7 +123,7 @@ export default function OrdersPage() {
     const idx = statusOptions.indexOf(o.status);
     if (idx < 0 || idx >= statusOptions.length - 1) return;
     const next = statusOptions[idx + 1];
-    setOrders((curr) => curr.map((x) => (x.id === o.id ? { ...x, status: next } : x)));
+    setAllOrders((curr) => curr.map((x) => (x.id === o.id ? { ...x, status: next } : x)));
   };
 
   return (
@@ -138,7 +180,7 @@ export default function OrdersPage() {
             {filtered.length === 0 && (
               <tr>
                 <td className="p-6 text-center text-[#4B5563]" colSpan={6}>
-                  Nenhum pedido encontrado.
+                  Nenhum pedido encontrado para esta empresa.
                 </td>
               </tr>
             )}
