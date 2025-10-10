@@ -108,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setState({ isAuth: false, user: null, token: null });
     setImpersonation({ active: false, originalUser: null });
+    localStorage.removeItem("deliverei_store_slug");
   };
 
   const setRole = (role: UserRole) => {
@@ -131,6 +132,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lastLogin: new Date().toISOString(),
     };
 
+    // Store the impersonated company slug for backend API calls
+    localStorage.setItem("deliverei_store_slug", empresaId);
+
     setState({ ...state, user: impersonatedUser });
   };
 
@@ -139,6 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setState({ ...state, user: impersonation.originalUser });
     setImpersonation({ active: false, originalUser: null });
+    
+    // Clear the store slug when stopping impersonation
+    localStorage.removeItem("deliverei_store_slug");
   };
 
   const value = useMemo(
