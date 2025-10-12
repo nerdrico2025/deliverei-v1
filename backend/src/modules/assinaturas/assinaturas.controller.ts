@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { AssinaturasService } from './assinaturas.service';
 import { CreateAssinaturaDto } from './dto/create-assinatura.dto';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
 @Controller('api/assinaturas')
 @UseGuards(JwtAuthGuard)

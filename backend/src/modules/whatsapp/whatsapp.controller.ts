@@ -9,7 +9,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
 @Controller('api/whatsapp')
 @UseGuards(JwtAuthGuard)

@@ -1,6 +1,6 @@
 
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import { StripeService } from './stripe.service';
 import { CreateAssinaturaDto } from './dto/create-assinatura.dto';
 
@@ -163,7 +163,7 @@ export class AssinaturasService {
         status: 'ATIVA',
         stripeSubscriptionId: subscription.id,
         dataFim: null,
-        proximaCobranca: new Date(subscription.current_period_end * 1000),
+        proximaCobranca: new Date((subscription as any).current_period_end * 1000),
       },
     });
   }
@@ -209,7 +209,7 @@ export class AssinaturasService {
         where: { id: assinatura.id },
         data: {
           status: subscription.status === 'active' ? 'ATIVA' : 'SUSPENSA',
-          proximaCobranca: new Date(subscription.current_period_end * 1000),
+          proximaCobranca: new Date((subscription as any).current_period_end * 1000),
         },
       });
     }

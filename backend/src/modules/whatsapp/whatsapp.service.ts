@@ -1,7 +1,7 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import { firstValueFrom } from 'rxjs';
 import { TEMPLATES_MENSAGENS } from './templates/mensagens';
 

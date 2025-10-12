@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import { PLANOS } from '../../modules/assinaturas/assinaturas.service';
 
 export const LIMITE_KEY = 'limite';

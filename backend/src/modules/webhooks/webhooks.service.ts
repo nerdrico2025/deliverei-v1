@@ -1,6 +1,6 @@
 
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import { AssinaturasService } from '../assinaturas/assinaturas.service';
 import { PagamentosService } from '../pagamentos/pagamentos.service';
 import { StripeService } from '../assinaturas/stripe.service';

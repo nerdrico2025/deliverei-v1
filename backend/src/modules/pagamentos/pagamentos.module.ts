@@ -4,7 +4,7 @@ import { HttpModule } from '@nestjs/axios';
 import { PagamentosController } from './pagamentos.controller';
 import { PagamentosService } from './pagamentos.service';
 import { AsaasService } from './asaas.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 
 @Module({
   imports: [HttpModule],
