@@ -21,8 +21,12 @@ export class DashboardController {
   getGraficoVendas(
     @Request() req,
     @Query('periodo') periodo: 'dia' | 'semana' | 'mes' = 'dia',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
-    return this.dashboardService.getGraficoVendas(req.user.empresaId, periodo);
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    return this.dashboardService.getGraficoVendas(req.user.empresaId, periodo, start, end);
   }
 
   @Get('produtos-populares')

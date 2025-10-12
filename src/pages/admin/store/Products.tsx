@@ -7,6 +7,7 @@ import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { X } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
+import { formatCurrency } from "../../../utils/formatters";
 
 type Product = { id: string; title: string; price: number; status: string; empresaId: string };
 
@@ -65,7 +66,7 @@ export default function ProductsPage() {
               list.map((p) => (
                 <tr key={p.id} className="border-t">
                   <td className="p-3">{p.title}</td>
-                  <td className="p-3">R$ {p.price.toFixed(2)}</td>
+                  <td className="p-3">{formatCurrency(p.price)}</td>
                   <td className="p-3 capitalize">{p.status}</td>
                   <td className="p-3 text-right">
                     <button

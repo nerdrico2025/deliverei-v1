@@ -6,6 +6,7 @@ import { UpsellStrip } from "../../components/commerce/UpsellStrip";
 import { useCart } from "../../hooks/useCart";
 import { useClientAuth } from "../../contexts/ClientAuthContext";
 import { User } from "lucide-react";
+import { formatCurrency } from "../../utils/formatters";
 
 // Validation helper functions
 const validateEmail = (email: string): boolean => {
@@ -369,7 +370,7 @@ export default function Checkout() {
                     <span className="text-[#4B5563]">
                       {it.title} <span className="text-[#9CA3AF]">x{it.qty}</span>
                     </span>
-                    <span className="font-medium text-[#1F2937]">R$ {(it.price * it.qty).toFixed(2)}</span>
+                    <span className="font-medium text-[#1F2937]">{formatCurrency(it.price * it.qty)}</span>
                   </li>
                 ))}
               </ul>
@@ -384,15 +385,15 @@ export default function Checkout() {
               <div className="space-y-2 border-t border-[#E5E7EB] pt-3">
                 <div className="flex justify-between text-sm text-[#4B5563]">
                   <span>Subtotal</span>
-                  <span>R$ {subtotal.toFixed(2)}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-[#4B5563]">
                   <span>Entrega</span>
-                  <span>R$ {deliveryFee.toFixed(2)}</span>
+                  <span>{formatCurrency(deliveryFee)}</span>
                 </div>
                 <div className="flex justify-between text-base font-semibold text-[#1F2937]">
                   <span>Total</span>
-                  <span>R$ {total.toFixed(2)}</span>
+                  <span>{formatCurrency(total)}</span>
                 </div>
               </div>
             </div>

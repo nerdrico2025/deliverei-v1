@@ -5,6 +5,7 @@ import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
 import { X } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
+import { formatCurrency } from "../../../utils/formatters";
 
 type OrderItem = {
   productId: string;
@@ -228,8 +229,8 @@ export default function OrdersPage() {
                         <tr key={it.productId} className="border-t">
                           <td className="p-2">{it.nome}</td>
                           <td className="p-2 text-center">{it.qtd}</td>
-                          <td className="p-2 text-right">R$ {it.preco.toFixed(2)}</td>
-                          <td className="p-2 text-right">R$ {(it.preco * it.qtd).toFixed(2)}</td>
+                          <td className="p-2 text-right">{formatCurrency(it.preco)}</td>
+                          <td className="p-2 text-right">{formatCurrency(it.preco * it.qtd)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -239,7 +240,7 @@ export default function OrdersPage() {
                           Total
                         </td>
                         <td className="p-2 text-right font-semibold">
-                          R$ {drawer.order.total.toFixed(2)}
+                          {formatCurrency(drawer.order.total)}
                         </td>
                       </tr>
                     </tfoot>
