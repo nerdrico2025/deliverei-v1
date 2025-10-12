@@ -29,6 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return {
+      sub: usuario.id, // Adicionar sub para compatibilidade com controllers
       id: usuario.id,
       email: usuario.email,
       nome: usuario.nome,
