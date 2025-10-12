@@ -47,7 +47,7 @@ export default function OrderConfirmation() {
       // Get empresaId from slug
       // Note: In production, you should fetch this from the API
       // For now, we'll fetch the empresa data from the backend
-      const empresaResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/empresas/slug/${slug}`);
+      const empresaResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://deliverei-backend.onrender.com/api'}/empresas/slug/${slug}`);
       
       if (!empresaResponse.ok) {
         throw new Error("Empresa não encontrada");
@@ -56,7 +56,7 @@ export default function OrderConfirmation() {
       const empresaData = await empresaResponse.json();
       
       // Call API to create account
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/auth/create-account-from-order`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://deliverei-backend.onrender.com/api'}/auth/create-account-from-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
