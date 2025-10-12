@@ -18,14 +18,27 @@ export class DashboardController {
   }
 
   @Get('vendas')
-  getGraficoVendas(
+  async getGraficoVendas(
     @Request() req,
     @Query('periodo') periodo: 'dia' | 'semana' | 'mes' = 'dia',
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
+    console.log('Dashboard vendas endpoint called:', {
+      user: req.user,
+      empresaId: req.user?.empresaId,
+      periodo,
+      startDate,
+      endDate,
+    });
+
+    if (!req.user || !req.user.empresaId) {
+      throw new Error('User or empresaId not found in request');
+    }
+
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
+    
     return this.dashboardService.getGraficoVendas(req.user.empresaId, periodo, start, end);
   }
 
