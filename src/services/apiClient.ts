@@ -1,8 +1,11 @@
 
 import axios from 'axios';
 
+// Usar variável de ambiente VITE_API_URL, com fallback para a URL do Render
+const API_URL = import.meta.env.VITE_API_URL || 'https://deliverei-backend.onrender.com/api';
+
 const apiClient = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -35,7 +38,7 @@ apiClient.interceptors.response.use(
       const refreshToken = localStorage.getItem('deliverei_refresh_token');
       if (refreshToken) {
         try {
-          const { data } = await axios.post('http://localhost:3000/api/auth/refresh', {
+          const { data } = await axios.post(`${API_URL}/auth/refresh`, {
             refreshToken
           });
           
