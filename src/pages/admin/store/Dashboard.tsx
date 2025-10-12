@@ -6,6 +6,10 @@ import { TrendingUp, ShoppingBag, DollarSign, AlertTriangle, ExternalLink, Copy,
 import { Input } from "../../../components/common/Input";
 import { useToast } from "../../../ui/feedback/ToastContext";
 import { useAuth } from "../../../auth/AuthContext";
+import DateRangeFilter, { DateRange, calculateDateRange } from "../../../components/dashboard/DateRangeFilter";
+import SalesChart from "../../../components/dashboard/SalesChart";
+import { dashboardApi, SalesDataPoint } from "../../../services/dashboardApi";
+import { formatCurrency } from "../../../utils/formatters";
 
 const getStoreSlug = () => (localStorage.getItem("deliverei_store_slug") || "minha-loja").trim();
 const getStoreUrl = () => `${window.location.origin}/loja/${getStoreSlug()}`;
@@ -94,6 +98,23 @@ export default function StoreDashboard() {
   const [companyOrders, setCompanyOrders] = useState<Order[]>([]);
   const [companyProducts, setCompanyProducts] = useState<Product[]>([]);
   const url = getStoreUrl();
+  
+  // Date range filter state (default to last 30 days)
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    return {
+      startDate: thirtyDaysAgo,
+      endDate: today,
+      option: "ultimos7dias",
+    };
+  });
+  
+  // Sales chart data state
+  const [salesData, setSalesData] = useState<SalesDataPoint[]>([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [salesError, setSalesError] = useState<string | null>(null);
 
   // Filter data by empresaId
   useEffect(() => {
@@ -107,6 +128,30 @@ export default function StoreDashboard() {
       setCompanyProducts([]);
     }
   }, [user?.empresaId]);
+  
+  // Fetch sales data when date range changes
+  useEffect(() => {
+    const fetchSalesData = async () => {
+      setSalesLoading(true);
+      setSalesError(null);
+      
+      try {
+        const data = await dashboardApi.getGraficoVendasCustom(
+          dateRange.startDate,
+          dateRange.endDate
+        );
+        setSalesData(data);
+      } catch (error) {
+        console.error('Error fetching sales data:', error);
+        setSalesError('Erro ao carregar dados de vendas');
+        setSalesData([]);
+      } finally {
+        setSalesLoading(false);
+      }
+    };
+    
+    fetchSalesData();
+  }, [dateRange]);
 
   // Calculate metrics based on filtered data
   const metrics = useMemo(() => {
@@ -155,9 +200,9 @@ export default function StoreDashboard() {
   };
 
   const stats = [
-    { label: "Vendas (hoje)", value: `R$ ${metrics.todaySales.toFixed(2)}`, icon: DollarSign, color: "text-[#16A34A]" },
+    { label: "Vendas (hoje)", value: formatCurrency(metrics.todaySales), icon: DollarSign, color: "text-[#16A34A]" },
     { label: "Pedidos (em aberto)", value: metrics.openOrders.toString(), icon: ShoppingBag, color: "text-[#0EA5E9]" },
-    { label: "Ticket médio", value: `R$ ${metrics.avgTicket.toFixed(2)}`, icon: TrendingUp, color: "text-[#D22630]" },
+    { label: "Ticket médio", value: formatCurrency(metrics.avgTicket), icon: TrendingUp, color: "text-[#D22630]" },
     { label: "Baixo estoque", value: metrics.lowStock.toString(), icon: AlertTriangle, color: "text-[#F59E0B]" },
   ];
 
@@ -186,10 +231,18 @@ export default function StoreDashboard() {
       </div>
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
-          <h3 className="mb-3 text-lg font-semibold text-[#1F2937]">Gráfico de vendas</h3>
-          <div className="h-48 rounded bg-[#F9FAFB] flex items-center justify-center text-[#4B5563]">
-            Gráfico placeholder
+          <h3 className="mb-4 text-lg font-semibold text-[#1F2937]">Gráfico de vendas</h3>
+          <div className="mb-4">
+            <DateRangeFilter 
+              value={dateRange} 
+              onChange={setDateRange}
+            />
           </div>
+          <SalesChart 
+            data={salesData}
+            loading={salesLoading}
+            error={salesError}
+          />
         </section>
 
         <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
@@ -241,7 +294,7 @@ export default function StoreDashboard() {
                     <div className="text-sm font-medium text-[#1F2937]">Pedido #{order.id}</div>
                     <div className="text-xs text-[#4B5563]">{order.cliente}</div>
                   </div>
-                  <div className="text-sm font-semibold text-[#1F2937]">R$ {order.total.toFixed(2)}</div>
+                  <div className="text-sm font-semibold text-[#1F2937]">{formatCurrency(order.total)}</div>
                 </div>
               ))
             )}

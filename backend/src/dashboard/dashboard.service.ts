@@ -128,12 +128,23 @@ export class DashboardService {
     };
   }
 
-  async getGraficoVendas(empresaId: string, periodo: 'dia' | 'semana' | 'mes' = 'dia') {
+  async getGraficoVendas(
+    empresaId: string, 
+    periodo: 'dia' | 'semana' | 'mes' = 'dia',
+    startDate?: Date,
+    endDate?: Date,
+  ) {
     const hoje = new Date();
     let dataInicio: Date;
+    let dataFim: Date = hoje;
     let groupBy: string;
 
-    if (periodo === 'dia') {
+    // If custom date range is provided, use it
+    if (startDate && endDate) {
+      dataInicio = new Date(startDate);
+      dataFim = new Date(endDate);
+      groupBy = 'day';
+    } else if (periodo === 'dia') {
       dataInicio = new Date(hoje);
       dataInicio.setDate(hoje.getDate() - 30);
       groupBy = 'day';
@@ -150,7 +161,10 @@ export class DashboardService {
     const pedidos = await this.prisma.pedido.findMany({
       where: {
         empresaId,
-        createdAt: { gte: dataInicio },
+        createdAt: { 
+          gte: dataInicio,
+          lte: dataFim,
+        },
         status: { notIn: ['CANCELADO'] },
       },
       select: {
@@ -164,9 +178,9 @@ export class DashboardService {
       let chave: string;
       const data = new Date(pedido.createdAt);
 
-      if (periodo === 'dia') {
+      if (groupBy === 'day') {
         chave = data.toISOString().split('T')[0];
-      } else if (periodo === 'semana') {
+      } else if (groupBy === 'week') {
         const inicioSemana = new Date(data);
         inicioSemana.setDate(data.getDate() - data.getDay());
         chave = inicioSemana.toISOString().split('T')[0];

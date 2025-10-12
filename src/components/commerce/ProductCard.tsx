@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "../common/Button";
 import { Badge } from "../common/Badge";
+import { formatCurrency } from "../../utils/formatters";
 
 type Product = {
   id: string;
@@ -27,7 +28,7 @@ export const ProductCard: React.FC<{
     </div>
     <div className="p-3">
       <div className="mb-2 line-clamp-1 font-semibold text-[#1F2937]">{product.title}</div>
-      <div className="mb-3 text-lg font-bold text-[#1F2937]">R$ {product.price.toFixed(2)}</div>
+      <div className="mb-3 text-lg font-bold text-[#1F2937]">{formatCurrency(product.price)}</div>
       <Button
         variant="primary"
         disabled={product.outOfStock}
