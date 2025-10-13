@@ -162,7 +162,7 @@ backend/prisma/migrations/
 ## 🎨 Frontend Configuration
 
 ### Netlify Deployment
-- **Frontend URL**: https://deliverei-frontend.netlify.app
+- **Frontend URL**: https://deliverei.netlify.app
 - **Repository**: Same mono-repo structure
 - **Root Directory**: frontend
 - **Build Command**: `npm install && npm run build`

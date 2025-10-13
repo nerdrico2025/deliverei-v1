@@ -408,7 +408,7 @@ npm run test:e2e
 
 ### External Links
 - [Production Backend](https://deliverei-backend.onrender.com)
-- [Production Frontend](https://deliverei-frontend.netlify.app)
+- [Production Frontend](https://deliverei.netlify.app)
 - [GitHub Repository](https://github.com/nerdrico2025/deliverei-v1)
 - [Render Dashboard](https://dashboard.render.com/web/srv-d3lh0q0gjchc73cdeokg)
 
