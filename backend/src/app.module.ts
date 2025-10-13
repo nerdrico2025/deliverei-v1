@@ -56,9 +56,12 @@ export class AppModule implements NestModule {
       .apply(TenantMiddleware)
       .exclude(
         // Excluir rotas do dashboard - usam JWT para identificar empresa
-        'dashboard/(.*)',
+        // IMPORTANTE: O padrão deve incluir o prefixo 'api' definido em main.ts
+        'api/dashboard/(.*)',
+        // Excluir rotas de notificações - usam JWT para identificar usuário
+        'api/notificacoes/(.*)',
         // Excluir rotas de autenticação
-        'auth/(.*)',
+        'api/auth/(.*)',
       )
       .forRoutes('*');
   }
