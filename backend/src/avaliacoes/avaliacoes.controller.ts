@@ -13,7 +13,7 @@ import { AvaliacoesService } from './avaliacoes.service';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
-@Controller('api/avaliacoes')
+@Controller('avaliacoes')
 @UseGuards(JwtAuthGuard)
 export class AvaliacoesController {
   constructor(private readonly avaliacoesService: AvaliacoesService) {}

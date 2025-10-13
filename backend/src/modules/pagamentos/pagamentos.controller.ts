@@ -14,7 +14,7 @@ import { PagamentosService } from './pagamentos.service';
 import { CreatePagamentoDto } from './dto/create-pagamento.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
-@Controller('api/pagamentos')
+@Controller('pagamentos')
 @UseGuards(JwtAuthGuard)
 export class PagamentosController {
   constructor(private readonly pagamentosService: PagamentosService) {}

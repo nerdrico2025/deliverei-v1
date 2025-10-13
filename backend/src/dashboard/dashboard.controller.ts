@@ -6,7 +6,7 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
-@Controller('api/dashboard')
+@Controller('dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.SUPER_ADMIN, Role.ADMIN_EMPRESA)
 export class DashboardController {

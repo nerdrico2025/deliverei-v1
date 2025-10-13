@@ -19,7 +19,7 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
-@Controller('api/cupons')
+@Controller('cupons')
 @UseGuards(JwtAuthGuard)
 export class CuponsController {
   constructor(private readonly cuponsService: CuponsService) {}

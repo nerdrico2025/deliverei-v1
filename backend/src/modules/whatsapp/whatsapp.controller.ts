@@ -11,7 +11,7 @@ import {
 import { WhatsappService } from './whatsapp.service';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
-@Controller('api/whatsapp')
+@Controller('whatsapp')
 @UseGuards(JwtAuthGuard)
 export class WhatsappController {
   constructor(private readonly whatsappService: WhatsappService) {}

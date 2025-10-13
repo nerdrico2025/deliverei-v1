@@ -11,7 +11,7 @@ import {
 import { NotificacoesService } from './notificacoes.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
-@Controller('api/notificacoes')
+@Controller('notificacoes')
 @UseGuards(JwtAuthGuard)
 export class NotificacoesController {
   constructor(private readonly notificacoesService: NotificacoesService) {}
