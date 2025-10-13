@@ -47,11 +47,17 @@ export interface PopularProduct {
 export const dashboardApi = {
   /**
    * Get dashboard statistics
+   * @param startDate - Optional start date for filtering
+   * @param endDate - Optional end date for filtering
    * @returns Dashboard statistics including sales, orders, and products
    */
-  async getEstatisticas(): Promise<DashboardStats> {
+  async getEstatisticas(startDate?: Date, endDate?: Date): Promise<DashboardStats> {
     try {
-      const response = await apiClient.get('/dashboard/estatisticas');
+      const params: Record<string, string> = {};
+      if (startDate) params.startDate = startDate.toISOString();
+      if (endDate) params.endDate = endDate.toISOString();
+      
+      const response = await apiClient.get('/dashboard/estatisticas', { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching dashboard statistics:', error);
@@ -79,13 +85,17 @@ export const dashboardApi = {
   /**
    * Get popular products
    * @param limit - Number of products to fetch
+   * @param startDate - Optional start date for filtering
+   * @param endDate - Optional end date for filtering
    * @returns Array of popular products
    */
-  async getProdutosPopulares(limit: number = 10): Promise<PopularProduct[]> {
+  async getProdutosPopulares(limit: number = 10, startDate?: Date, endDate?: Date): Promise<PopularProduct[]> {
     try {
-      const response = await apiClient.get('/dashboard/produtos-populares', {
-        params: { limit: limit.toString() },
-      });
+      const params: Record<string, string> = { limit: limit.toString() };
+      if (startDate) params.startDate = startDate.toISOString();
+      if (endDate) params.endDate = endDate.toISOString();
+      
+      const response = await apiClient.get('/dashboard/produtos-populares', { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching popular products:', error);

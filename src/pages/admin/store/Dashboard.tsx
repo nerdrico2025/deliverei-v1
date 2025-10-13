@@ -99,21 +99,18 @@ export default function StoreDashboard() {
   const [companyProducts, setCompanyProducts] = useState<Product[]>([]);
   const url = getStoreUrl();
   
-  // Date range filter state (default to last 30 days)
+  // Date range filter state (default to last 7 days)
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-    return {
-      startDate: thirtyDaysAgo,
-      endDate: today,
-      option: "ultimos7dias",
-    };
+    return calculateDateRange("ultimos7dias");
   });
   
-  // Sales chart data state
-  const [salesData, setSalesData] = useState<SalesDataPoint[]>([]);
+  // Loading states for all dashboard sections
+  const [statsLoading, setStatsLoading] = useState(false);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  
+  // Data states
+  const [salesData, setSalesData] = useState<SalesDataPoint[]>([]);
   const [salesError, setSalesError] = useState<string | null>(null);
 
   // Filter data by empresaId
@@ -129,13 +126,17 @@ export default function StoreDashboard() {
     }
   }, [user?.empresaId]);
   
-  // Fetch sales data when date range changes
+  // Fetch all dashboard data when date range changes
   useEffect(() => {
-    const fetchSalesData = async () => {
+    const fetchAllData = async () => {
+      // Start loading for all sections
+      setStatsLoading(true);
       setSalesLoading(true);
+      setOrdersLoading(true);
       setSalesError(null);
       
       try {
+        // Fetch sales chart data
         const data = await dashboardApi.getGraficoVendasCustom(
           dateRange.startDate,
           dateRange.endDate
@@ -147,52 +148,57 @@ export default function StoreDashboard() {
         setSalesData([]);
       } finally {
         setSalesLoading(false);
+        setStatsLoading(false);
+        setOrdersLoading(false);
       }
     };
     
-    fetchSalesData();
+    fetchAllData();
   }, [dateRange]);
 
-  // Calculate metrics based on filtered data
+  // Calculate metrics based on filtered data and date range
   const metrics = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Filter today's orders
-    const todayOrders = companyOrders.filter(o => {
-      const orderDate = o.criadoEm.split(' ')[0];
-      return orderDate === today;
+    // Filter orders within the selected date range
+    const filteredOrders = companyOrders.filter(o => {
+      const orderDate = new Date(o.criadoEm.replace(' ', 'T'));
+      return orderDate >= dateRange.startDate && orderDate <= dateRange.endDate;
     });
 
-    // Calculate today's sales
-    const todaySales = todayOrders.reduce((sum, o) => sum + o.total, 0);
+    // Calculate total sales in the period
+    const totalSales = filteredOrders.reduce((sum, o) => sum + o.total, 0);
 
-    // Count open orders (not delivered or cancelled)
-    const openOrders = companyOrders.filter(o => 
+    // Count open orders (not delivered or cancelled) in the period
+    const openOrders = filteredOrders.filter(o => 
       o.status !== "entregue" && o.status !== "cancelado"
     ).length;
 
-    // Calculate average ticket
-    const avgTicket = companyOrders.length > 0 
-      ? companyOrders.reduce((sum, o) => sum + o.total, 0) / companyOrders.length 
+    // Calculate average ticket for the period
+    const avgTicket = filteredOrders.length > 0 
+      ? totalSales / filteredOrders.length 
       : 0;
 
-    // Count low stock products (stock <= 3)
+    // Count low stock products (always show current state, not date-dependent)
     const lowStock = companyProducts.filter(p => p.stock <= 3).length;
 
     return {
-      todaySales,
+      totalSales,
       openOrders,
       avgTicket,
       lowStock,
     };
-  }, [companyOrders, companyProducts]);
+  }, [companyOrders, companyProducts, dateRange]);
 
-  // Get recent orders (last 3)
+  // Get recent orders filtered by date range
   const recentOrders = useMemo(() => {
-    return [...companyOrders]
+    const filteredOrders = companyOrders.filter(o => {
+      const orderDate = new Date(o.criadoEm.replace(' ', 'T'));
+      return orderDate >= dateRange.startDate && orderDate <= dateRange.endDate;
+    });
+    
+    return [...filteredOrders]
       .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
       .slice(0, 3);
-  }, [companyOrders]);
+  }, [companyOrders, dateRange]);
 
   const copyUrl = async () => {
     await navigator.clipboard.writeText(url);
@@ -200,7 +206,7 @@ export default function StoreDashboard() {
   };
 
   const stats = [
-    { label: "Vendas (hoje)", value: formatCurrency(metrics.todaySales), icon: DollarSign, color: "text-[#16A34A]" },
+    { label: "Vendas (período)", value: formatCurrency(metrics.totalSales), icon: DollarSign, color: "text-[#16A34A]" },
     { label: "Pedidos (em aberto)", value: metrics.openOrders.toString(), icon: ShoppingBag, color: "text-[#0EA5E9]" },
     { label: "Ticket médio", value: formatCurrency(metrics.avgTicket), icon: TrendingUp, color: "text-[#D22630]" },
     { label: "Baixo estoque", value: metrics.lowStock.toString(), icon: AlertTriangle, color: "text-[#F59E0B]" },
@@ -213,13 +219,29 @@ export default function StoreDashboard() {
       <Helmet>
         <title>Deliverei | Dashboard - {storeName}</title>
       </Helmet>
-      <h1 className="mb-4 text-2xl font-semibold text-[#111827]">Dashboard - {storeName}</h1>
+      
+      {/* Page Header with Title and Period Filter */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-semibold text-[#111827]">Dashboard - {storeName}</h1>
+        <div className="w-full sm:w-auto sm:min-w-[280px]">
+          <DateRangeFilter 
+            value={dateRange} 
+            onChange={setDateRange}
+          />
+        </div>
+      </div>
 
+      {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.label} className="rounded-md border border-[#E5E7EB] bg-white p-4">
+            <div key={stat.label} className="relative rounded-md border border-[#E5E7EB] bg-white p-4">
+              {statsLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-md">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#D22630] border-t-transparent"></div>
+                </div>
+              )}
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-sm text-[#4B5563]">{stat.label}</div>
                 <Icon className={stat.color} size={20} />
@@ -229,15 +251,12 @@ export default function StoreDashboard() {
           );
         })}
       </div>
+      
+      {/* Dashboard Sections */}
       <div className="mt-6 grid gap-6 md:grid-cols-2">
+        {/* Sales Chart Section */}
         <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-[#1F2937]">Gráfico de vendas</h3>
-          <div className="mb-4">
-            <DateRangeFilter 
-              value={dateRange} 
-              onChange={setDateRange}
-            />
-          </div>
           <SalesChart 
             data={salesData}
             loading={salesLoading}
@@ -280,25 +299,39 @@ export default function StoreDashboard() {
           <small className="text-[#6B7280]">URL pública da vitrine</small>
         </section>
 
-        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
+        {/* Recent Orders Section */}
+        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm relative">
           <h3 className="mb-3 text-lg font-semibold text-[#1F2937]">Pedidos recentes</h3>
-          <div className="space-y-2">
-            {recentOrders.length === 0 ? (
-              <div className="py-8 text-center text-[#4B5563]">
-                Nenhum pedido encontrado
+          
+          {ordersLoading ? (
+            <div className="py-8 flex items-center justify-center">
+              <div className="flex items-center gap-2 text-[#4B5563]">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#D22630] border-t-transparent"></div>
+                <span className="text-sm">Carregando pedidos...</span>
               </div>
-            ) : (
-              recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between border-b border-[#E5E7EB] pb-2">
-                  <div>
-                    <div className="text-sm font-medium text-[#1F2937]">Pedido #{order.id}</div>
-                    <div className="text-xs text-[#4B5563]">{order.cliente}</div>
-                  </div>
-                  <div className="text-sm font-semibold text-[#1F2937]">{formatCurrency(order.total)}</div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentOrders.length === 0 ? (
+                <div className="py-8 text-center text-[#4B5563]">
+                  <p className="text-sm">Nenhum pedido encontrado</p>
+                  <p className="mt-1 text-xs text-[#6B7280]">
+                    Tente selecionar outro período
+                  </p>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                recentOrders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between border-b border-[#E5E7EB] pb-2">
+                    <div>
+                      <div className="text-sm font-medium text-[#1F2937]">Pedido #{order.id}</div>
+                      <div className="text-xs text-[#4B5563]">{order.cliente}</div>
+                    </div>
+                    <div className="text-sm font-semibold text-[#1F2937]">{formatCurrency(order.total)}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </section>
       </div>
 
