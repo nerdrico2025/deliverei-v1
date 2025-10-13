@@ -54,6 +54,12 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(TenantMiddleware)
+      .exclude(
+        // Excluir rotas do dashboard - usam JWT para identificar empresa
+        'dashboard/(.*)',
+        // Excluir rotas de autenticação
+        'auth/(.*)',
+      )
       .forRoutes('*');
   }
 }
