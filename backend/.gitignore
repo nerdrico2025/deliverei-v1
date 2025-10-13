@@ -1,47 +1,48 @@
-# compiled output
-/dist
-/node_modules
-/build
-
-# Logs
-logs
-*.log
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-
-# OS
-.DS_Store
-
-# Tests
-/coverage
-/.nyc_output
-
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-# Environment
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Prisma
-prisma/migrations/*
-!prisma/migrations/.gitkeep
+Here's the result of running `cat -n` on /home/ubuntu/github_repos/deliverei-v1/backend/.gitignore:
+     1	# compiled output
+     2	/dist
+     3	/node_modules
+     4	/build
+     5	
+     6	# Logs
+     7	logs
+     8	*.log
+     9	npm-debug.log*
+    10	pnpm-debug.log*
+    11	yarn-debug.log*
+    12	yarn-error.log*
+    13	lerna-debug.log*
+    14	
+    15	# OS
+    16	.DS_Store
+    17	
+    18	# Tests
+    19	/coverage
+    20	/.nyc_output
+    21	
+    22	# IDEs and editors
+    23	/.idea
+    24	.project
+    25	.classpath
+    26	.c9/
+    27	*.launch
+    28	.settings/
+    29	*.sublime-workspace
+    30	
+    31	# IDE - VSCode
+    32	.vscode/*
+    33	!.vscode/settings.json
+    34	!.vscode/tasks.json
+    35	!.vscode/launch.json
+    36	!.vscode/extensions.json
+    37	
+    38	# Environment
+    39	.env
+    40	.env.local
+    41	.env.development.local
+    42	.env.test.local
+    43	.env.production.local
+    44	
+# Migrations devem ser versionadas, não ignorar!
+    47	!prisma/migrations/.gitkeep
+    48	
