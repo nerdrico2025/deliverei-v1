@@ -13,7 +13,7 @@ import { AssinaturasService } from './assinaturas.service';
 import { CreateAssinaturaDto } from './dto/create-assinatura.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
-@Controller('api/assinaturas')
+@Controller('assinaturas')
 @UseGuards(JwtAuthGuard)
 export class AssinaturasController {
   constructor(private readonly assinaturasService: AssinaturasService) {}

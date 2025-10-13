@@ -14,7 +14,7 @@ import { Request } from 'express';
 import { WebhooksService } from './webhooks.service';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
-@Controller('api/webhooks')
+@Controller('webhooks')
 export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 

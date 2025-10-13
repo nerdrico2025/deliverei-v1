@@ -18,7 +18,7 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
-@Controller('api/pedidos')
+@Controller('pedidos')
 @UseGuards(JwtAuthGuard)
 export class PedidosController {
   constructor(private readonly pedidosService: PedidosService) {}
