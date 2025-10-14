@@ -4,6 +4,7 @@ import { cuponsApi, Cupom, CupomCreateRequest } from '../../services/backendApi'
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Loading } from '../../components/common/Loading';
 
 export const Cupons: React.FC = () => {
   const [cupons, setCupons] = useState<Cupom[]>([]);
@@ -106,7 +107,7 @@ export const Cupons: React.FC = () => {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <Loading size="md" />
           </div>
         ) : cupons.length === 0 ? (
           <div className="text-center py-12">

@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getStatusColor, STATUS_LABELS } from '../../utils/statusColors';
 import { ModalAvaliacao } from '../../components/ModalAvaliacao';
+import { Loading } from '../../components/common/Loading';
 
 export const MeusPedidos: React.FC = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -49,7 +50,7 @@ export const MeusPedidos: React.FC = () => {
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <Loading size="md" />
           </div>
         ) : pedidos.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">

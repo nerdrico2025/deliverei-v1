@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { Loading } from "../common/Loading";
 import {
   LineChart,
   Line,
@@ -92,7 +93,7 @@ export default function SalesChart({ data, loading = false, error = null }: Sale
     return (
       <div className="flex h-80 items-center justify-center">
         <div className="flex items-center gap-2 text-[#4B5563]">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#D22630] border-t-transparent"></div>
+          <Loading size="sm" />
           <span className="text-sm">Carregando dados...</span>
         </div>
       </div>
