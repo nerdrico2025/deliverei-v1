@@ -5,30 +5,17 @@ import { Package, Eye, X, XCircle, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getStatusColor, STATUS_LABELS } from '../../utils/statusColors';
-import { ModalAvaliacao } from '../../components/ModalAvaliacao';
-import { Loading } from '../../components/common/Loading';
+import { ModalAvaliacao, Loading } from '../../components';
+import { useApi } from '../../hooks';
 
 export const MeusPedidos: React.FC = () => {
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: pedidos, loading, execute: fetchPedidos } = useApi<Pedido[]>();
   const [selectedPedido, setSelectedPedido] = useState<Pedido | null>(null);
   const [showAvaliacaoModal, setShowAvaliacaoModal] = useState(false);
 
-  const fetchPedidos = async () => {
-    try {
-      setLoading(true);
-      const data = await pedidosApi.meusPedidos();
-      setPedidos(data);
-    } catch (error) {
-      console.error('Erro ao carregar pedidos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPedidos();
-  }, []);
+    fetchPedidos(() => pedidosApi.meusPedidos());
+  }, [fetchPedidos]);
 
   const handleCancelar = async (pedidoId: string) => {
     if (!confirm('Tem certeza que deseja cancelar este pedido?')) return;
@@ -52,7 +39,7 @@ export const MeusPedidos: React.FC = () => {
           <div className="flex items-center justify-center h-64">
             <Loading size="md" />
           </div>
-        ) : pedidos.length === 0 ? (
+        ) : !pedidos || pedidos.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
             <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
             <p className="text-gray-500 text-lg">Você ainda não fez nenhum pedido</p>
