@@ -1,11 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { dashboardApi, pedidosApi, DashboardEstatisticas, VendasPeriodo, ProdutoPopular, Pedido } from '../../services/backendApi';
 import { TrendingUp, ShoppingCart, DollarSign, Package } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Loading } from '../../components/common/Loading';
+import { Loading } from '../../components/common';
+import { useApi } from '../../hooks';
 
 const STATUS_COLORS: Record<string, string> = {
   PENDENTE: '#FCD34D',
@@ -16,36 +17,32 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELADO: '#EF4444',
 };
 
+interface DashboardData {
+  estatisticas: DashboardEstatisticas;
+  vendas: VendasPeriodo[];
+  produtosPopulares: ProdutoPopular[];
+  pedidosRecentes: Pedido[];
+}
+
 export const Dashboard: React.FC = () => {
-  const [estatisticas, setEstatisticas] = useState<DashboardEstatisticas | null>(null);
-  const [vendas, setVendas] = useState<VendasPeriodo[]>([]);
-  const [produtosPopulares, setProdutosPopulares] = useState<ProdutoPopular[]>([]);
-  const [pedidosRecentes, setPedidosRecentes] = useState<Pedido[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, execute } = useApi<DashboardData>();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [estatData, vendasData, produtosData, pedidosData] = await Promise.all([
-          dashboardApi.estatisticas(),
-          dashboardApi.vendas('mes'),
-          dashboardApi.produtosPopulares(),
-          pedidosApi.listar({ limit: 5 }),
-        ]);
-        setEstatisticas(estatData);
-        setVendas(vendasData);
-        setProdutosPopulares(produtosData);
-        setPedidosRecentes(pedidosData.pedidos);
-      } catch (error) {
-        console.error('Erro ao carregar dashboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+    execute(async () => {
+      const [estatData, vendasData, produtosData, pedidosData] = await Promise.all([
+        dashboardApi.estatisticas(),
+        dashboardApi.vendas('mes'),
+        dashboardApi.produtosPopulares(),
+        pedidosApi.listar({ limit: 5 }),
+      ]);
+      return {
+        estatisticas: estatData,
+        vendas: vendasData,
+        produtosPopulares: produtosData,
+        pedidosRecentes: pedidosData.pedidos,
+      };
+    });
+  }, [execute]);
 
   if (loading) {
     return (
@@ -55,7 +52,9 @@ export const Dashboard: React.FC = () => {
     );
   }
 
-  if (!estatisticas) return null;
+  if (!data?.estatisticas) return null;
+
+  const { estatisticas, vendas, produtosPopulares, pedidosRecentes } = data;
 
   const statCards = [
     {

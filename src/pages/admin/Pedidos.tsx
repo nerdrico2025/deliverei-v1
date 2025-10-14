@@ -5,35 +5,38 @@ import { Search, Filter, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getStatusColor, STATUS_LABELS } from '../../utils/statusColors';
-import { Loading } from '../../components/common/Loading';
+import { Loading } from '../../components/common';
+import { useApi, usePagination } from '../../hooks';
+
+interface PedidosResponse {
+  pedidos: Pedido[];
+  total: number;
+}
 
 export const Pedidos: React.FC = () => {
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, execute } = useApi<PedidosResponse>();
+  const pagination = usePagination(1, 10);
   const [selectedPedido, setSelectedPedido] = useState<Pedido | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [filtros, setFiltros] = useState<PedidosFiltros>({
-    page: 1,
-    limit: 10,
-  });
+  const [filtros, setFiltros] = useState<Omit<PedidosFiltros, 'page' | 'limit'>>({});
 
   const fetchPedidos = async () => {
-    try {
-      setLoading(true);
-      const data = await pedidosApi.listar(filtros);
-      setPedidos(data.pedidos);
-      setTotal(data.total);
-    } catch (error) {
-      console.error('Erro ao carregar pedidos:', error);
-    } finally {
-      setLoading(false);
+    const result = await execute(() =>
+      pedidosApi.listar({
+        ...filtros,
+        page: pagination.page,
+        limit: pagination.limit,
+      })
+    );
+    if (result) {
+      pagination.setTotal(result.total);
     }
   };
 
   useEffect(() => {
     fetchPedidos();
-  }, [filtros]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros, pagination.page, pagination.limit]);
 
   const handleStatusChange = async (pedidoId: string, novoStatus: string) => {
     try {
@@ -46,7 +49,7 @@ export const Pedidos: React.FC = () => {
     }
   };
 
-  const totalPages = Math.ceil(total / (filtros.limit || 10));
+  const pedidos = data?.pedidos || [];
 
   const statusOptions = [
     'PENDENTE',
@@ -73,7 +76,10 @@ export const Pedidos: React.FC = () => {
             </label>
             <select
               value={filtros.status || ''}
-              onChange={(e) => setFiltros({ ...filtros, status: e.target.value || undefined, page: 1 })}
+              onChange={(e) => {
+                setFiltros({ ...filtros, status: e.target.value || undefined });
+                pagination.goToPage(1);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Todos</option>
@@ -92,7 +98,10 @@ export const Pedidos: React.FC = () => {
             <input
               type="date"
               value={filtros.dataInicio || ''}
-              onChange={(e) => setFiltros({ ...filtros, dataInicio: e.target.value || undefined, page: 1 })}
+              onChange={(e) => {
+                setFiltros({ ...filtros, dataInicio: e.target.value || undefined });
+                pagination.goToPage(1);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -104,7 +113,10 @@ export const Pedidos: React.FC = () => {
             <input
               type="date"
               value={filtros.dataFim || ''}
-              onChange={(e) => setFiltros({ ...filtros, dataFim: e.target.value || undefined, page: 1 })}
+              onChange={(e) => {
+                setFiltros({ ...filtros, dataFim: e.target.value || undefined });
+                pagination.goToPage(1);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -119,7 +131,10 @@ export const Pedidos: React.FC = () => {
                 type="text"
                 placeholder="Nome do cliente..."
                 value={filtros.clienteNome || ''}
-                onChange={(e) => setFiltros({ ...filtros, clienteNome: e.target.value || undefined, page: 1 })}
+                onChange={(e) => {
+                  setFiltros({ ...filtros, clienteNome: e.target.value || undefined });
+                  pagination.goToPage(1);
+                }}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -219,23 +234,23 @@ export const Pedidos: React.FC = () => {
             {/* Paginação */}
             <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
               <div className="text-sm text-gray-700">
-                Mostrando {((filtros.page || 1) - 1) * (filtros.limit || 10) + 1} até{' '}
-                {Math.min((filtros.page || 1) * (filtros.limit || 10), total)} de {total} pedidos
+                Mostrando {(pagination.page - 1) * pagination.limit + 1} até{' '}
+                {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} pedidos
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setFiltros({ ...filtros, page: (filtros.page || 1) - 1 })}
-                  disabled={(filtros.page || 1) === 1}
+                  onClick={pagination.previousPage}
+                  disabled={!pagination.hasPreviousPage}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <span className="text-sm text-gray-700">
-                  Página {filtros.page || 1} de {totalPages}
+                  Página {pagination.page} de {pagination.totalPages}
                 </span>
                 <button
-                  onClick={() => setFiltros({ ...filtros, page: (filtros.page || 1) + 1 })}
-                  disabled={(filtros.page || 1) >= totalPages}
+                  onClick={pagination.nextPage}
+                  disabled={!pagination.hasNextPage}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronRight className="w-5 h-5" />
