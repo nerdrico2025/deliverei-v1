@@ -1,9 +1,10 @@
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateCupomDto } from './dto/create-cupom.dto';
 import { UpdateCupomDto } from './dto/update-cupom.dto';
 import { ValidarCupomDto } from './dto/validar-cupom.dto';
+import { validateEntityExists } from '../utils';
 
 @Injectable()
 export class CuponsService {
@@ -39,9 +40,7 @@ export class CuponsService {
       where: { id, empresaId },
     });
 
-    if (!cupom) {
-      throw new NotFoundException('Cupom não encontrado');
-    }
+    validateEntityExists(cupom, 'Cupom');
 
     return cupom;
   }
@@ -72,9 +71,7 @@ export class CuponsService {
       },
     });
 
-    if (!cupom) {
-      throw new NotFoundException('Cupom não encontrado ou inativo');
-    }
+    validateEntityExists(cupom, 'Cupom (não encontrado ou inativo)');
 
     const agora = new Date();
     if (agora < cupom.dataInicio || agora > cupom.dataFim) {

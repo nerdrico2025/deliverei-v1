@@ -1,7 +1,8 @@
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
+import { validateEntityExists, validateOwnershipOrAdmin } from '../utils';
 
 @Injectable()
 export class AvaliacoesService {
@@ -13,9 +14,7 @@ export class AvaliacoesService {
       where: { id: createAvaliacaoDto.produtoId, empresaId },
     });
 
-    if (!produto) {
-      throw new NotFoundException('Produto não encontrado');
-    }
+    validateEntityExists(produto, 'Produto');
 
     return this.prisma.avaliacao.create({
       data: {
@@ -46,9 +45,7 @@ export class AvaliacoesService {
       where: { id: produtoId, empresaId },
     });
 
-    if (!produto) {
-      throw new NotFoundException('Produto não encontrado');
-    }
+    validateEntityExists(produto, 'Produto');
 
     const avaliacoes = await this.prisma.avaliacao.findMany({
       where: { produtoId },

@@ -1,10 +1,11 @@
 
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { UpdateStatusPedidoDto } from './dto/update-status-pedido.dto';
 import { FiltrarPedidosDto } from './dto/filtrar-pedidos.dto';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { WhatsappService } from '../modules/whatsapp/whatsapp.service';
+import { validateEntityExists, validateOwnershipOrAdmin } from '../utils';
 
 @Injectable()
 export class PedidosService {
@@ -153,13 +154,11 @@ export class PedidosService {
       },
     });
 
-    if (!pedido) {
-      throw new NotFoundException('Pedido não encontrado');
-    }
+    validateEntityExists(pedido, 'Pedido');
 
     // Se for cliente, verificar se é o dono do pedido
-    if (usuarioId && pedido.clienteId !== usuarioId) {
-      throw new ForbiddenException('Você não tem permissão para ver este pedido');
+    if (usuarioId) {
+      validateOwnershipOrAdmin(pedido.clienteId, usuarioId, false, 'pedido');
     }
 
     return pedido;
@@ -227,10 +226,8 @@ export class PedidosService {
   async cancel(id: string, empresaId: string, usuarioId: string, isAdmin: boolean) {
     const pedido = await this.findOne(id, empresaId);
 
-    // Se não for admin, verificar se é o dono do pedido
-    if (!isAdmin && pedido.clienteId !== usuarioId) {
-      throw new ForbiddenException('Você não tem permissão para cancelar este pedido');
-    }
+    // Validar permissão de acesso
+    validateOwnershipOrAdmin(pedido.clienteId, usuarioId, isAdmin, 'pedido');
 
     // Verificar se o pedido pode ser cancelado
     if (['ENTREGUE', 'CANCELADO'].includes(pedido.status)) {
