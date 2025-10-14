@@ -1,5 +1,5 @@
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
@@ -97,8 +97,8 @@ export class DashboardService {
 
     const produtosDetalhes = await Promise.all(
       produtosMaisVendidos.map(async (item) => {
-        const produto = await this.prisma.produto.findUnique({
-          where: { id: item.produtoId },
+        const produto = await this.prisma.produto.findFirst({
+          where: { id: item.produtoId, empresaId },
           select: { id: true, nome: true, imagem: true, preco: true },
         });
         return {
@@ -134,72 +134,86 @@ export class DashboardService {
     startDate?: Date,
     endDate?: Date,
   ) {
-    const hoje = new Date();
-    let dataInicio: Date;
-    let dataFim: Date = hoje;
-    let groupBy: string;
+    try {
+      const hoje = new Date();
+      let dataInicio: Date;
+      let dataFim: Date = hoje;
+      let groupBy: string;
 
-    // If custom date range is provided, use it
-    if (startDate && endDate) {
-      dataInicio = new Date(startDate);
-      dataFim = new Date(endDate);
-      groupBy = 'day';
-    } else if (periodo === 'dia') {
-      dataInicio = new Date(hoje);
-      dataInicio.setDate(hoje.getDate() - 30);
-      groupBy = 'day';
-    } else if (periodo === 'semana') {
-      dataInicio = new Date(hoje);
-      dataInicio.setDate(hoje.getDate() - 90);
-      groupBy = 'week';
-    } else {
-      dataInicio = new Date(hoje);
-      dataInicio.setMonth(hoje.getMonth() - 12);
-      groupBy = 'month';
-    }
-
-    const pedidos = await this.prisma.pedido.findMany({
-      where: {
-        empresaId,
-        createdAt: { 
-          gte: dataInicio,
-          lte: dataFim,
-        },
-        status: { notIn: ['CANCELADO'] },
-      },
-      select: {
-        createdAt: true,
-        total: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    const vendas = pedidos.reduce((acc, pedido) => {
-      let chave: string;
-      const data = new Date(pedido.createdAt);
-
-      if (groupBy === 'day') {
-        chave = data.toISOString().split('T')[0];
-      } else if (groupBy === 'week') {
-        const inicioSemana = new Date(data);
-        inicioSemana.setDate(data.getDate() - data.getDay());
-        chave = inicioSemana.toISOString().split('T')[0];
+      // If custom date range is provided, use it
+      if (startDate && endDate) {
+        dataInicio = new Date(startDate);
+        dataFim = new Date(endDate);
+        groupBy = 'day';
+      } else if (periodo === 'dia') {
+        dataInicio = new Date(hoje);
+        dataInicio.setDate(hoje.getDate() - 30);
+        groupBy = 'day';
+      } else if (periodo === 'semana') {
+        dataInicio = new Date(hoje);
+        dataInicio.setDate(hoje.getDate() - 90);
+        groupBy = 'week';
       } else {
-        chave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        dataInicio = new Date(hoje);
+        dataInicio.setMonth(hoje.getMonth() - 12);
+        groupBy = 'month';
       }
 
-      if (!acc[chave]) {
-        acc[chave] = 0;
-      }
-      acc[chave] += Number(pedido.total);
+      const pedidos = await this.prisma.pedido.findMany({
+        where: {
+          empresaId,
+          createdAt: { 
+            gte: dataInicio,
+            lte: dataFim,
+          },
+          status: { notIn: ['CANCELADO'] },
+        },
+        select: {
+          createdAt: true,
+          total: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
 
-      return acc;
-    }, {});
+      const vendas = pedidos.reduce((acc, pedido) => {
+        try {
+          let chave: string;
+          const data = new Date(pedido.createdAt);
 
-    return Object.entries(vendas).map(([data, total]) => ({
-      data,
-      total: Number(total),
-    }));
+          if (groupBy === 'day') {
+            chave = data.toISOString().split('T')[0];
+          } else if (groupBy === 'week') {
+            const inicioSemana = new Date(data);
+            inicioSemana.setDate(data.getDate() - data.getDay());
+            chave = inicioSemana.toISOString().split('T')[0];
+          } else {
+            chave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+          }
+
+          if (!acc[chave]) {
+            acc[chave] = 0;
+          }
+          
+          const total = Number(pedido.total);
+          if (!isNaN(total) && isFinite(total)) {
+            acc[chave] += total;
+          }
+
+          return acc;
+        } catch (itemError) {
+          console.error('Erro processando pedido:', pedido?.createdAt, itemError);
+          return acc;
+        }
+      }, {});
+
+      return Object.entries(vendas).map(([data, total]) => ({
+        data,
+        total: Number(total),
+      }));
+    } catch (error) {
+      console.error('Erro em getGraficoVendas:', error);
+      throw new InternalServerErrorException('Erro ao buscar dados de vendas');
+    }
   }
 
   async getProdutosPopulares(empresaId: string, limit: number = 10) {
@@ -218,8 +232,8 @@ export class DashboardService {
 
     const produtosDetalhes = await Promise.all(
       produtosMaisVendidos.map(async (item) => {
-        const produto = await this.prisma.produto.findUnique({
-          where: { id: item.produtoId },
+        const produto = await this.prisma.produto.findFirst({
+          where: { id: item.produtoId, empresaId },
           select: { 
             id: true, 
             nome: true, 

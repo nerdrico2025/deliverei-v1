@@ -38,6 +38,7 @@ export class PedidosController {
   ) {
     return this.pedidosService.findMeusPedidos(
       req.user.sub,
+      req.user.empresaId,
       parseInt(page, 10),
       parseInt(limit, 10),
     );

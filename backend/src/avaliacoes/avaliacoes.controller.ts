@@ -20,21 +20,21 @@ export class AvaliacoesController {
 
   @Post()
   create(@Body() createAvaliacaoDto: CreateAvaliacaoDto, @Request() req) {
-    return this.avaliacoesService.create(createAvaliacaoDto, req.user.sub);
+    return this.avaliacoesService.create(createAvaliacaoDto, req.user.sub, req.user.empresaId);
   }
 
   @Get('produto/:produtoId')
-  findByProduto(@Param('produtoId') produtoId: string) {
-    return this.avaliacoesService.findByProduto(produtoId);
+  findByProduto(@Param('produtoId') produtoId: string, @Request() req) {
+    return this.avaliacoesService.findByProduto(produtoId, req.user.empresaId);
   }
 
   @Get('usuario')
   findByUsuario(@Request() req) {
-    return this.avaliacoesService.findByUsuario(req.user.sub);
+    return this.avaliacoesService.findByUsuario(req.user.sub, req.user.empresaId);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
-    return this.avaliacoesService.remove(id, req.user.sub);
+    return this.avaliacoesService.remove(id, req.user.sub, req.user.empresaId);
   }
 }

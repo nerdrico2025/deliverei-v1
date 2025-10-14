@@ -80,12 +80,15 @@ export class PedidosService {
     };
   }
 
-  async findMeusPedidos(usuarioId: string, page: number = 1, limit: number = 10) {
+  async findMeusPedidos(usuarioId: string, empresaId: string, page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
 
     const [pedidos, total] = await Promise.all([
       this.prisma.pedido.findMany({
-        where: { clienteId: usuarioId },
+        where: { 
+          clienteId: usuarioId,
+          empresaId
+        },
         include: {
           itens: {
             include: {
@@ -103,7 +106,12 @@ export class PedidosService {
         skip,
         take: limit,
       }),
-      this.prisma.pedido.count({ where: { clienteId: usuarioId } }),
+      this.prisma.pedido.count({ 
+        where: { 
+          clienteId: usuarioId,
+          empresaId
+        } 
+      }),
     ]);
 
     return {
