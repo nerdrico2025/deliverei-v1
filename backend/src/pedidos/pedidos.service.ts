@@ -171,40 +171,46 @@ export class PedidosService {
   ) {
     const pedido = await this.findOne(id, empresaId);
 
-    const pedidoAtualizado = await this.prisma.pedido.update({
-      where: { id },
-      data: { status: updateStatusDto.status as any },
-      include: {
-        cliente: {
-          select: {
-            id: true,
-            nome: true,
-            email: true,
+    // Usar transação para garantir consistência
+    const pedidoAtualizado = await this.prisma.$transaction(async (tx) => {
+      // Atualizar pedido
+      const updated = await tx.pedido.update({
+        where: { id },
+        data: { status: updateStatusDto.status as any },
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nome: true,
+              email: true,
+            },
           },
-        },
-        itens: {
-          include: {
-            produto: {
-              select: {
-                id: true,
-                nome: true,
-                imagem: true,
+          itens: {
+            include: {
+              produto: {
+                select: {
+                  id: true,
+                  nome: true,
+                  imagem: true,
+                },
               },
             },
           },
         },
-      },
+      });
+
+      // Criar notificação de mudança de status dentro da transação
+      await this.notificacoesService.notificarMudancaStatus(
+        pedido.id,
+        pedido.clienteId,
+        pedido.numero,
+        updateStatusDto.status,
+      );
+
+      return updated;
     });
 
-    // Criar notificação de mudança de status
-    await this.notificacoesService.notificarMudancaStatus(
-      pedido.id,
-      pedido.clienteId,
-      pedido.numero,
-      updateStatusDto.status,
-    );
-
-    // Enviar notificação via WhatsApp
+    // Enviar notificação via WhatsApp (fora da transação, não crítico)
     try {
       // Buscar telefone do cliente (assumindo que está no endereço ou em outro campo)
       // Por enquanto, vamos usar um telefone de exemplo
@@ -234,18 +240,40 @@ export class PedidosService {
       throw new ForbiddenException('Este pedido não pode ser cancelado');
     }
 
-    const pedidoCancelado = await this.prisma.pedido.update({
-      where: { id },
-      data: { status: 'CANCELADO' },
-    });
+    // Usar transação para garantir consistência
+    const pedidoCancelado = await this.prisma.$transaction(async (tx) => {
+      // Cancelar pedido
+      const cancelado = await tx.pedido.update({
+        where: { id },
+        data: { status: 'CANCELADO' },
+      });
 
-    // Criar notificação de cancelamento
-    await this.notificacoesService.notificarMudancaStatus(
-      pedido.id,
-      pedido.clienteId,
-      pedido.numero,
-      'CANCELADO',
-    );
+      // Criar notificação de cancelamento dentro da transação
+      await this.notificacoesService.notificarMudancaStatus(
+        pedido.id,
+        pedido.clienteId,
+        pedido.numero,
+        'CANCELADO',
+      );
+
+      // Opcional: Restaurar estoque dos produtos (se aplicável)
+      const itens = await tx.itemPedido.findMany({
+        where: { pedidoId: id },
+      });
+
+      for (const item of itens) {
+        await tx.produto.update({
+          where: { id: item.produtoId },
+          data: {
+            estoque: {
+              increment: item.quantidade,
+            },
+          },
+        });
+      }
+
+      return cancelado;
+    });
 
     return pedidoCancelado;
   }
