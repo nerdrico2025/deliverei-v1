@@ -1,12 +1,20 @@
 
 import React, { useEffect, useState } from 'react';
+import { Loading } from '../../components/common/Loading';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Loading } from '../../components/common/Loading';
 import { pagamentosApi, Pagamento } from '../../services/backendApi';
+import { Loading } from '../../components/common/Loading';
 import { ArrowLeft, Copy, Download, XCircle } from 'lucide-react';
+import { Loading } from '../../components/common/Loading';
 import { useToast } from '../../ui/feedback/ToastContext';
+import { Loading } from '../../components/common/Loading';
 import { format } from 'date-fns';
+import { Loading } from '../../components/common/Loading';
 import { ptBR } from 'date-fns/locale';
+import { Loading } from '../../components/common/Loading';
 import { PagamentoPix } from '../../components/PagamentoPix';
+import { Loading } from '../../components/common/Loading';
 
 const STATUS_CONFIG = {
   PENDENTE: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
@@ -72,7 +80,7 @@ export const DetalhesPagamento: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <Loading size="md" />
           <p className="mt-4 text-gray-600">Carregando...</p>
         </div>
       </div>

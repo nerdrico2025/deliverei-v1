@@ -93,6 +93,8 @@ model Produto {
 
   @@index([empresaId])
   @@index([ativo])
+  @@index([empresaId, ativo])
+  @@index([empresaId, categoria])
   @@map("produtos")
 }
 
@@ -124,6 +126,9 @@ model Pedido {
   @@index([clienteId])
   @@index([empresaId])
   @@index([status])
+  @@index([empresaId, createdAt])
+  @@index([empresaId, status])
+  @@index([createdAt])
   @@map("pedidos")
 }
 
@@ -189,12 +194,13 @@ model ItemPedido {
 
   @@index([pedidoId])
   @@index([produtoId])
+  @@index([pedidoId, produtoId])
   @@map("itens_pedido")
 }
 
 model Cupom {
   id          String   @id @default(uuid())
-  codigo      String   @unique
+  codigo      String
   descricao   String?
   tipo        String   // PERCENTUAL, VALOR_FIXO
   valor       Decimal  @db.Decimal(10, 2)
@@ -210,8 +216,9 @@ model Cupom {
 
   empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
+  @@unique([empresaId, codigo])
   @@index([empresaId])
-  @@index([codigo])
+  @@index([empresaId, ativo])
   @@map("cupons")
 }
 
@@ -249,6 +256,7 @@ model Notificacao {
 
   @@index([usuarioId])
   @@index([pedidoId])
+  @@index([usuarioId, lida])
   @@map("notificacoes")
 }
 

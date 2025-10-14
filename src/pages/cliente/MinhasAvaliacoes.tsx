@@ -4,6 +4,7 @@ import { avaliacoesApi, Avaliacao } from '../../services/backendApi';
 import { Star, Trash2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Loading } from '../../components/common/Loading';
 
 export const MinhasAvaliacoes: React.FC = () => {
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
@@ -60,7 +61,7 @@ export const MinhasAvaliacoes: React.FC = () => {
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <Loading size="md" />
           </div>
         ) : avaliacoes.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">

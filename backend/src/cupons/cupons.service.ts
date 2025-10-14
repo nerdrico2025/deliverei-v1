@@ -1,18 +1,22 @@
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateCupomDto } from './dto/create-cupom.dto';
 import { UpdateCupomDto } from './dto/update-cupom.dto';
 import { ValidarCupomDto } from './dto/validar-cupom.dto';
+import { validateEntityExists } from '../utils';
 
 @Injectable()
 export class CuponsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createCupomDto: CreateCupomDto, empresaId: string) {
-    // Verificar se o código já existe
-    const cupomExistente = await this.prisma.cupom.findUnique({
-      where: { codigo: createCupomDto.codigo },
+    // Verificar se o código já existe para esta empresa
+    const cupomExistente = await this.prisma.cupom.findFirst({
+      where: { 
+        codigo: createCupomDto.codigo,
+        empresaId 
+      },
     });
 
     if (cupomExistente) {
@@ -39,9 +43,7 @@ export class CuponsService {
       where: { id, empresaId },
     });
 
-    if (!cupom) {
-      throw new NotFoundException('Cupom não encontrado');
-    }
+    validateEntityExists(cupom, 'Cupom');
 
     return cupom;
   }
@@ -72,9 +74,7 @@ export class CuponsService {
       },
     });
 
-    if (!cupom) {
-      throw new NotFoundException('Cupom não encontrado ou inativo');
-    }
+    validateEntityExists(cupom, 'Cupom (não encontrado ou inativo)');
 
     const agora = new Date();
     if (agora < cupom.dataInicio || agora > cupom.dataFim) {
@@ -105,9 +105,18 @@ export class CuponsService {
     };
   }
 
-  async incrementarUso(codigo: string) {
+  async incrementarUso(codigo: string, empresaId: string) {
+    // Buscar cupom específico da empresa
+    const cupom = await this.prisma.cupom.findFirst({
+      where: { codigo, empresaId },
+    });
+
+    if (!cupom) {
+      throw new BadRequestException('Cupom não encontrado');
+    }
+
     return this.prisma.cupom.update({
-      where: { codigo },
+      where: { id: cupom.id },
       data: {
         usoAtual: {
           increment: 1,

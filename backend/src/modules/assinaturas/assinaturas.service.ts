@@ -257,21 +257,24 @@ export class AssinaturasService {
     });
 
     if (assinatura) {
-      await this.prisma.pagamento.create({
-        data: {
-          empresaId: assinatura.empresaId,
-          assinaturaId: assinatura.id,
-          tipo: 'ASSINATURA',
-          metodo: 'CARTAO',
-          status: 'RECUSADO',
-          valor: invoice.amount_due / 100,
-        },
-      });
+      // Usar transação para garantir consistência
+      await this.prisma.$transaction(async (tx) => {
+        await tx.pagamento.create({
+          data: {
+            empresaId: assinatura.empresaId,
+            assinaturaId: assinatura.id,
+            tipo: 'ASSINATURA',
+            metodo: 'CARTAO',
+            status: 'RECUSADO',
+            valor: invoice.amount_due / 100,
+          },
+        });
 
-      // Suspender assinatura
-      await this.prisma.assinatura.update({
-        where: { id: assinatura.id },
-        data: { status: 'SUSPENSA' },
+        // Suspender assinatura
+        await tx.assinatura.update({
+          where: { id: assinatura.id },
+          data: { status: 'SUSPENSA' },
+        });
       });
     }
   }

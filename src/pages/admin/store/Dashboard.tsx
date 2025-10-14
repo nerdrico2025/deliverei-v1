@@ -4,6 +4,7 @@ import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { TrendingUp, ShoppingBag, DollarSign, AlertTriangle, ExternalLink, Copy, Eye, X } from "lucide-react";
 import { Input } from "../../../components/common/Input";
+import { Loading } from "../../../components/common/Loading";
 import { useToast } from "../../../ui/feedback/ToastContext";
 import { useAuth } from "../../../auth/AuthContext";
 import DateRangeFilter, { DateRange, calculateDateRange } from "../../../components/dashboard/DateRangeFilter";
@@ -239,7 +240,7 @@ export default function StoreDashboard() {
             <div key={stat.label} className="relative rounded-md border border-[#E5E7EB] bg-white p-4">
               {statsLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-md">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#D22630] border-t-transparent"></div>
+                  <Loading size="sm" />
                 </div>
               )}
               <div className="mb-2 flex items-center justify-between">
@@ -306,7 +307,7 @@ export default function StoreDashboard() {
           {ordersLoading ? (
             <div className="py-8 flex items-center justify-center">
               <div className="flex items-center gap-2 text-[#4B5563]">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#D22630] border-t-transparent"></div>
+                <Loading size="sm" />
                 <span className="text-sm">Carregando pedidos...</span>
               </div>
             </div>

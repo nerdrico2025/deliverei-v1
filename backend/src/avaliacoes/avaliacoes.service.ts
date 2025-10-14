@@ -1,21 +1,20 @@
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
+import { validateEntityExists, validateOwnershipOrAdmin } from '../utils';
 
 @Injectable()
 export class AvaliacoesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createAvaliacaoDto: CreateAvaliacaoDto, usuarioId: string) {
-    // Verificar se o produto existe
-    const produto = await this.prisma.produto.findUnique({
-      where: { id: createAvaliacaoDto.produtoId },
+  async create(createAvaliacaoDto: CreateAvaliacaoDto, usuarioId: string, empresaId: string) {
+    // Verificar se o produto existe e pertence à empresa
+    const produto = await this.prisma.produto.findFirst({
+      where: { id: createAvaliacaoDto.produtoId, empresaId },
     });
 
-    if (!produto) {
-      throw new NotFoundException('Produto não encontrado');
-    }
+    validateEntityExists(produto, 'Produto');
 
     return this.prisma.avaliacao.create({
       data: {
@@ -40,7 +39,14 @@ export class AvaliacoesService {
     });
   }
 
-  async findByProduto(produtoId: string) {
+  async findByProduto(produtoId: string, empresaId: string) {
+    // Verificar se o produto pertence à empresa
+    const produto = await this.prisma.produto.findFirst({
+      where: { id: produtoId, empresaId },
+    });
+
+    validateEntityExists(produto, 'Produto');
+
     const avaliacoes = await this.prisma.avaliacao.findMany({
       where: { produtoId },
       include: {
@@ -67,9 +73,12 @@ export class AvaliacoesService {
     };
   }
 
-  async findByUsuario(usuarioId: string) {
+  async findByUsuario(usuarioId: string, empresaId: string) {
     return this.prisma.avaliacao.findMany({
-      where: { usuarioId },
+      where: { 
+        usuarioId,
+        produto: { empresaId }
+      },
       include: {
         produto: {
           select: {
@@ -83,9 +92,10 @@ export class AvaliacoesService {
     });
   }
 
-  async remove(id: string, usuarioId: string) {
+  async remove(id: string, usuarioId: string, empresaId: string) {
     const avaliacao = await this.prisma.avaliacao.findUnique({
       where: { id },
+      include: { produto: true },
     });
 
     if (!avaliacao) {
@@ -94,6 +104,11 @@ export class AvaliacoesService {
 
     if (avaliacao.usuarioId !== usuarioId) {
       throw new ForbiddenException('Você não pode deletar esta avaliação');
+    }
+
+    // Validar se o produto pertence à empresa
+    if (avaliacao.produto.empresaId !== empresaId) {
+      throw new ForbiddenException('Avaliação não encontrada');
     }
 
     return this.prisma.avaliacao.delete({

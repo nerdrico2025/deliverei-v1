@@ -1,10 +1,16 @@
 
 import React, { useEffect, useState } from 'react';
+import { Loading } from '../../components/common/Loading';
 import { webhooksApi, WebhookLog } from '../../services/backendApi';
+import { Loading } from '../../components/common/Loading';
 import { Webhook, CheckCircle, XCircle, Filter, Eye } from 'lucide-react';
+import { Loading } from '../../components/common/Loading';
 import { useToast } from '../../ui/feedback/ToastContext';
+import { Loading } from '../../components/common/Loading';
 import { format } from 'date-fns';
+import { Loading } from '../../components/common/Loading';
 import { ptBR } from 'date-fns/locale';
+import { Loading } from '../../components/common/Loading';
 
 export const Webhooks: React.FC = () => {
   const [logs, setLogs] = useState<WebhookLog[]>([]);
@@ -49,7 +55,7 @@ export const Webhooks: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <Loading size="md" />
           <p className="mt-4 text-gray-600">Carregando...</p>
         </div>
       </div>

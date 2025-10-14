@@ -5,6 +5,7 @@ import { TrendingUp, ShoppingCart, DollarSign, Package } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Loading } from '../../components/common/Loading';
 
 const STATUS_COLORS: Record<string, string> = {
   PENDENTE: '#FCD34D',
@@ -49,7 +50,7 @@ export const Dashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <Loading size="md" />
       </div>
     );
   }
