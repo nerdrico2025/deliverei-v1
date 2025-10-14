@@ -1,9 +1,11 @@
 
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class DashboardService {
+  private readonly logger = new Logger(DashboardService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async getEstatisticas(empresaId: string) {
@@ -201,7 +203,7 @@ export class DashboardService {
 
           return acc;
         } catch (itemError) {
-          console.error('Erro processando pedido:', pedido?.createdAt, itemError);
+          this.logger.error(`Erro processando pedido: ${pedido?.createdAt}`, itemError);
           return acc;
         }
       }, {});
@@ -211,7 +213,7 @@ export class DashboardService {
         total: Number(total),
       }));
     } catch (error) {
-      console.error('Erro em getGraficoVendas:', error);
+      this.logger.error('Erro em getGraficoVendas', error);
       throw new InternalServerErrorException('Erro ao buscar dados de vendas');
     }
   }

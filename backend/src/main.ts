@@ -1,5 +1,5 @@
 import { NestFactory, Reflector } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -31,9 +31,10 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`\n🚀 Servidor rodando em: http://localhost:${port}`);
-  console.log(`📚 API disponível em: http://localhost:${port}/api`);
-  console.log(`\n✨ Ambiente: ${process.env.NODE_ENV || 'development'}\n`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`🚀 Servidor rodando em: http://localhost:${port}`);
+  logger.log(`📚 API disponível em: http://localhost:${port}/api`);
+  logger.log(`✨ Ambiente: ${process.env.NODE_ENV || 'development'}`);
 }
 
 bootstrap();

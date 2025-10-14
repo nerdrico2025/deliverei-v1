@@ -1,5 +1,5 @@
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { UpdateStatusPedidoDto } from './dto/update-status-pedido.dto';
 import { FiltrarPedidosDto } from './dto/filtrar-pedidos.dto';
@@ -8,6 +8,8 @@ import { WhatsappService } from '../modules/whatsapp/whatsapp.service';
 
 @Injectable()
 export class PedidosService {
+  private readonly logger = new Logger(PedidosService.name);
+
   constructor(
     private prisma: PrismaService,
     private notificacoesService: NotificacoesService,
@@ -216,7 +218,7 @@ export class PedidosService {
       );
     } catch (error) {
       // Não falhar se o WhatsApp não estiver configurado
-      console.error('Erro ao enviar WhatsApp:', error.message);
+      this.logger.warn('Erro ao enviar WhatsApp', error.message);
     }
 
     return pedidoAtualizado;
