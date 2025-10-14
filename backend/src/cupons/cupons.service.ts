@@ -11,9 +11,12 @@ export class CuponsService {
   constructor(private prisma: PrismaService) {}
 
   async create(createCupomDto: CreateCupomDto, empresaId: string) {
-    // Verificar se o código já existe
-    const cupomExistente = await this.prisma.cupom.findUnique({
-      where: { codigo: createCupomDto.codigo },
+    // Verificar se o código já existe para esta empresa
+    const cupomExistente = await this.prisma.cupom.findFirst({
+      where: { 
+        codigo: createCupomDto.codigo,
+        empresaId 
+      },
     });
 
     if (cupomExistente) {

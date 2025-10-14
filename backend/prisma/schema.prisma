@@ -199,7 +199,7 @@ model ItemPedido {
 
 model Cupom {
   id          String   @id @default(uuid())
-  codigo      String   @unique
+  codigo      String
   descricao   String?
   tipo        String   // PERCENTUAL, VALOR_FIXO
   valor       Decimal  @db.Decimal(10, 2)
@@ -215,10 +215,9 @@ model Cupom {
 
   empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
+  @@unique([empresaId, codigo])
   @@index([empresaId])
-  @@index([codigo])
   @@index([empresaId, ativo])
-  @@index([empresaId, codigo])
   @@map("cupons")
 }
 
