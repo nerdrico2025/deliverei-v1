@@ -1,273 +1,128 @@
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { RequireAuth } from "../components/auth/RequireAuth";
+/**
+ * App Router
+ * 
+ * Main routing configuration with lazy loading support
+ * Routes are organized by feature/module for better maintainability
+ * 
+ * @refactored Phase 2 - Simplified structure with lazy loading
+ */
 
-import Home from "../pages/public/Home";
-import Login from "../pages/public/Login";
-import LoginBackend from "../pages/public/LoginBackend";
+import React, { Suspense } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
-import Vitrine from "../pages/storefront/Vitrine";
-import Checkout from "../pages/storefront/Checkout";
-import OrderConfirmation from "../pages/storefront/OrderConfirmation";
-import ClientLogin from "../pages/storefront/ClientLogin";
-import VitrineBackend from "../pages/storefront/VitrineBackend";
-import CheckoutBackend from "../pages/storefront/CheckoutBackend";
-import OrderConfirmationBackend from "../pages/storefront/OrderConfirmationBackend";
+// Import organized route configurations
+import { publicRoutes } from './public.routes';
+import { storefrontRoutes } from './storefront.routes';
+import {
+  storeAdminRoutes,
+  adminLayoutRoutes,
+  adminFeatureRoutes,
+  subscriptionRoutes,
+} from './admin.routes';
+import { clientRoutes } from './client.routes';
+import { superAdminRoutes } from './super.routes';
+import { supportRoutes } from './support.routes';
 
-import StoreDashboard from "../pages/admin/store/Dashboard";
-import Products from "../pages/admin/store/Products";
-import Orders from "../pages/admin/store/Orders";
-import Clients from "../pages/admin/store/Clients";
-import StoreSettings from "../pages/admin/store/Settings";
-import ClientEdit from "../pages/admin/store/ClientEdit";
-import ProductEdit from "../pages/admin/store/ProductEdit";
+// Loading fallback component
+const LoadingFallback = () => (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      fontSize: '1.2rem',
+      color: '#666',
+    }}
+  >
+    Carregando...
+  </div>
+);
 
-import SuperDashboard from "../pages/admin/super/Dashboard";
-import Companies from "../pages/admin/super/Companies";
-import Subscriptions from "../pages/admin/super/Subscriptions";
-import Tickets from "../pages/admin/super/Tickets";
-import SuperSettings from "../pages/admin/super/Settings";
+/**
+ * Renders a route configuration object
+ */
+const renderRoutes = (routes: any[]) => {
+  return routes.map((route, index) => {
+    const { path, element, children, ...rest } = route;
+    
+    if (children) {
+      return (
+        <Route key={path || index} path={path} element={element} {...rest}>
+          {children.map((child: any, childIndex: number) => (
+            <Route
+              key={child.path || childIndex}
+              index={child.index}
+              path={child.path}
+              element={child.element}
+            />
+          ))}
+        </Route>
+      );
+    }
+    
+    return <Route key={path || index} path={path} element={element} {...rest} />;
+  });
+};
 
-import SupportLayout from "../pages/support/Layout";
-import SupportTickets from "../pages/support/Tickets";
-
-// FASE 3 - Novos imports
-import { AdminLayout } from "../layouts/AdminLayout";
-import { Dashboard as AdminDashboard } from "../pages/admin/Dashboard";
-import { Pedidos as AdminPedidos } from "../pages/admin/Pedidos";
-import { Cupons as AdminCupons } from "../pages/admin/Cupons";
-import { MeusPedidos } from "../pages/cliente/MeusPedidos";
-import { MinhasAvaliacoes } from "../pages/cliente/MinhasAvaliacoes";
-
-// FASE 4 - Novos imports
-import { Planos } from "../pages/assinaturas/Planos";
-import { CheckoutAssinatura } from "../pages/assinaturas/CheckoutAssinatura";
-import { MinhaAssinatura } from "../pages/assinaturas/MinhaAssinatura";
-import { HistoricoPagamentos } from "../pages/pagamentos/HistoricoPagamentos";
-import { DetalhesPagamento } from "../pages/pagamentos/DetalhesPagamento";
-import { ConfiguracaoWhatsApp } from "../pages/admin/ConfiguracaoWhatsApp";
-import { Webhooks } from "../pages/admin/Webhooks";
-
+/**
+ * Main App Router
+ * 
+ * All routes are lazy-loaded for optimal performance
+ * and wrapped in Suspense for loading states
+ */
 export default function AppRouter() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/login-backend" element={<LoginBackend />} />
-
-      {/* Mock routes (original) */}
-      <Route path="/storefront" element={<Vitrine />} />
-      <Route path="/storefront/checkout" element={<Checkout />} />
-      <Route path="/storefront/order-confirmation" element={<OrderConfirmation />} />
-
-      {/* Backend integrated routes */}
-      <Route path="/storefront-backend" element={<VitrineBackend />} />
-      <Route path="/storefront/checkout-backend" element={<CheckoutBackend />} />
-      <Route path="/storefront/order-confirmation-backend" element={<OrderConfirmationBackend />} />
-
-      <Route path="/loja/:slug" element={<Vitrine />} />
-      <Route path="/loja/:slug/login" element={<ClientLogin />} />
-      <Route path="/loja/:slug/checkout" element={<Checkout />} />
-
-      <Route
-        path="/admin/store"
-        element={
-          <RequireAuth role="empresa">
-            <StoreDashboard />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/store/products"
-        element={
-          <RequireAuth role="empresa">
-            <Products />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/store/orders"
-        element={
-          <RequireAuth role="empresa">
-            <Orders />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/store/clients"
-        element={
-          <RequireAuth role="empresa">
-            <Clients />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/store/settings"
-        element={
-          <RequireAuth role="empresa">
-            <StoreSettings />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/store/clients/:id/edit"
-        element={
-          <RequireAuth role="empresa">
-            <ClientEdit />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/store/products/:id/edit"
-        element={
-          <RequireAuth role="empresa">
-            <ProductEdit />
-          </RequireAuth>
-        }
-      />
-
-      <Route
-        path="/admin/super"
-        element={
-          <RequireAuth role="superadmin">
-            <SuperDashboard />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/super/companies"
-        element={
-          <RequireAuth role="superadmin">
-            <Companies />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/super/subscriptions"
-        element={
-          <RequireAuth role="superadmin">
-            <Subscriptions />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/super/tickets"
-        element={
-          <RequireAuth role="superadmin">
-            <Tickets />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/super/settings"
-        element={
-          <RequireAuth role="superadmin">
-            <SuperSettings />
-          </RequireAuth>
-        }
-      />
-
-      <Route
-        path="/support"
-        element={
-          <RequireAuth role="suporte">
-            <SupportLayout />
-          </RequireAuth>
-        }
-      >
-        <Route index element={<Navigate to="tickets" replace />} />
-        <Route path="tickets" element={<SupportTickets />} />
-      </Route>
-
-      {/* FASE 3 - Rotas Admin com novo layout */}
-      <Route
-        path="/admin"
-        element={
-          <RequireAuth role="empresa">
-            <AdminLayout />
-          </RequireAuth>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="pedidos" element={<AdminPedidos />} />
-        <Route path="cupons" element={<AdminCupons />} />
-      </Route>
-
-      {/* FASE 3 - Rotas Cliente */}
-      <Route
-        path="/meus-pedidos"
-        element={
-          <RequireAuth>
-            <MeusPedidos />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/minhas-avaliacoes"
-        element={
-          <RequireAuth>
-            <MinhasAvaliacoes />
-          </RequireAuth>
-        }
-      />
-
-      {/* FASE 4 - Rotas de Assinaturas */}
-      <Route path="/assinaturas/planos" element={<Planos />} />
-      <Route
-        path="/assinaturas/checkout/:planoId"
-        element={
-          <RequireAuth role="empresa">
-            <CheckoutAssinatura />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/assinaturas/minha"
-        element={
-          <RequireAuth role="empresa">
-            <MinhaAssinatura />
-          </RequireAuth>
-        }
-      />
-
-      {/* FASE 4 - Rotas de Pagamentos */}
-      <Route
-        path="/pagamentos"
-        element={
-          <RequireAuth>
-            <HistoricoPagamentos />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/pagamentos/:id"
-        element={
-          <RequireAuth>
-            <DetalhesPagamento />
-          </RequireAuth>
-        }
-      />
-
-      {/* FASE 4 - Rotas Admin (WhatsApp e Webhooks) */}
-      <Route
-        path="/admin/whatsapp"
-        element={
-          <RequireAuth role="empresa">
-            <ConfiguracaoWhatsApp />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/webhooks"
-        element={
-          <RequireAuth role="empresa">
-            <Webhooks />
-          </RequireAuth>
-        }
-      />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        {/* Public Routes */}
+        {renderRoutes(publicRoutes)}
+        
+        {/* Storefront Routes */}
+        {renderRoutes(storefrontRoutes)}
+        
+        {/* Admin Routes (Store - Legacy) */}
+        {renderRoutes(storeAdminRoutes)}
+        
+        {/* Admin Routes (New Layout) */}
+        <Route path={adminLayoutRoutes.path} element={adminLayoutRoutes.element}>
+          {adminLayoutRoutes.children?.map((child, index) => (
+            <Route
+              key={child.path || index}
+              index={child.index}
+              path={child.path}
+              element={child.element}
+            />
+          ))}
+        </Route>
+        
+        {/* Admin Feature Routes (WhatsApp, Webhooks) */}
+        {renderRoutes(adminFeatureRoutes)}
+        
+        {/* Subscription Routes */}
+        {renderRoutes(subscriptionRoutes)}
+        
+        {/* Client Routes */}
+        {renderRoutes(clientRoutes)}
+        
+        {/* Super Admin Routes */}
+        {renderRoutes(superAdminRoutes)}
+        
+        {/* Support Routes */}
+        <Route path={supportRoutes.path} element={supportRoutes.element}>
+          {supportRoutes.children?.map((child, index) => (
+            <Route
+              key={child.path || index}
+              index={child.index}
+              path={child.path}
+              element={child.element}
+            />
+          ))}
+        </Route>
+        
+        {/* Fallback Route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
