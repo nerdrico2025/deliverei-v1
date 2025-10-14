@@ -105,9 +105,18 @@ export class CuponsService {
     };
   }
 
-  async incrementarUso(codigo: string) {
+  async incrementarUso(codigo: string, empresaId: string) {
+    // Buscar cupom específico da empresa
+    const cupom = await this.prisma.cupom.findFirst({
+      where: { codigo, empresaId },
+    });
+
+    if (!cupom) {
+      throw new BadRequestException('Cupom não encontrado');
+    }
+
     return this.prisma.cupom.update({
-      where: { codigo },
+      where: { id: cupom.id },
       data: {
         usoAtual: {
           increment: 1,
