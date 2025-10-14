@@ -93,6 +93,8 @@ model Produto {
 
   @@index([empresaId])
   @@index([ativo])
+  @@index([empresaId, ativo])
+  @@index([empresaId, categoria])
   @@map("produtos")
 }
 
@@ -124,6 +126,9 @@ model Pedido {
   @@index([clienteId])
   @@index([empresaId])
   @@index([status])
+  @@index([empresaId, createdAt])
+  @@index([empresaId, status])
+  @@index([createdAt])
   @@map("pedidos")
 }
 
@@ -212,6 +217,8 @@ model Cupom {
 
   @@index([empresaId])
   @@index([codigo])
+  @@index([empresaId, ativo])
+  @@index([empresaId, codigo])
   @@map("cupons")
 }
 

@@ -97,18 +97,26 @@ export class DashboardService {
       take: 10,
     });
 
-    const produtosDetalhes = await Promise.all(
-      produtosMaisVendidos.map(async (item) => {
-        const produto = await this.prisma.produto.findFirst({
-          where: { id: item.produtoId, empresaId },
-          select: { id: true, nome: true, imagem: true, preco: true },
-        });
-        return {
-          ...produto,
-          quantidadeVendida: item._sum.quantidade,
-        };
-      }),
-    );
+    // Buscar todos os produtos de uma vez (otimização N+1)
+    const produtoIds = produtosMaisVendidos.map((item) => item.produtoId);
+    const produtos = await this.prisma.produto.findMany({
+      where: { 
+        id: { in: produtoIds },
+        empresaId 
+      },
+      select: { id: true, nome: true, imagem: true, preco: true },
+    });
+
+    // Criar mapa para lookup rápido
+    const produtosMap = new Map(produtos.map(p => [p.id, p]));
+
+    const produtosDetalhes = produtosMaisVendidos.map((item) => {
+      const produto = produtosMap.get(item.produtoId);
+      return {
+        ...produto,
+        quantidadeVendida: item._sum.quantidade,
+      };
+    }).filter(p => p.id); // Filtrar produtos não encontrados
 
     return {
       pedidos: {
@@ -232,25 +240,33 @@ export class DashboardService {
       take: limit,
     });
 
-    const produtosDetalhes = await Promise.all(
-      produtosMaisVendidos.map(async (item) => {
-        const produto = await this.prisma.produto.findFirst({
-          where: { id: item.produtoId, empresaId },
-          select: { 
-            id: true, 
-            nome: true, 
-            imagem: true, 
-            preco: true,
-            categoria: true,
-          },
-        });
-        return {
-          ...produto,
-          quantidadeVendida: item._sum.quantidade,
-          totalVendido: Number(item._sum.subtotal || 0),
-        };
-      }),
-    );
+    // Buscar todos os produtos de uma vez (otimização N+1)
+    const produtoIds = produtosMaisVendidos.map((item) => item.produtoId);
+    const produtos = await this.prisma.produto.findMany({
+      where: { 
+        id: { in: produtoIds },
+        empresaId 
+      },
+      select: { 
+        id: true, 
+        nome: true, 
+        imagem: true, 
+        preco: true,
+        categoria: true,
+      },
+    });
+
+    // Criar mapa para lookup rápido
+    const produtosMap = new Map(produtos.map(p => [p.id, p]));
+
+    const produtosDetalhes = produtosMaisVendidos.map((item) => {
+      const produto = produtosMap.get(item.produtoId);
+      return {
+        ...produto,
+        quantidadeVendida: item._sum.quantidade,
+        totalVendido: Number(item._sum.subtotal || 0),
+      };
+    }).filter(p => p.id); // Filtrar produtos não encontrados
 
     return produtosDetalhes;
   }
