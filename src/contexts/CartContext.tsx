@@ -1,5 +1,12 @@
+/**
+ * Cart Context
+ * 
+ * Global shopping cart state management
+ * 
+ * @optimized Phase 2 - Added memoization and performance optimizations
+ */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { carrinhoApi, Carrinho, CarrinhoItem } from '../services/backendApi';
 import { useToast } from '../ui/feedback/ToastContext';
 
@@ -18,6 +25,12 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+/**
+ * Cart Provider Component
+ * 
+ * Provides cart state and operations to child components
+ * Optimized with useCallback and useMemo to prevent unnecessary re-renders
+ */
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<Carrinho | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,6 +38,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lastAddedItemId, setLastAddedItemId] = useState<string | null>(null);
   const { push } = useToast();
 
+  /**
+   * Fetch current cart from API
+   * Memoized to prevent recreation on every render
+   */
   const fetchCart = useCallback(async () => {
     try {
       setLoading(true);
@@ -34,12 +51,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Erro ao carregar carrinho';
       setError(errorMsg);
-      console.error('Erro ao buscar carrinho:', err);
+      
+      // Only log in development to avoid console spam
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Erro ao buscar carrinho:', err);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
+  /**
+   * Add item to cart
+   */
   const addItem = useCallback(async (produtoId: string, quantidade: number) => {
     try {
       setLoading(true);
@@ -47,7 +71,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await carrinhoApi.adicionarItem(produtoId, quantidade);
       setCart(data);
       
-      // Encontrar o item adicionado
+      // Find the added item
       const addedItem = data.itens.find(item => item.produtoId === produtoId);
       if (addedItem) {
         setLastAddedItemId(addedItem.id);
@@ -64,6 +88,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [push]);
 
+  /**
+   * Update item quantity in cart
+   */
   const updateItem = useCallback(async (itemId: string, quantidade: number) => {
     try {
       setLoading(true);
@@ -80,6 +107,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [push]);
 
+  /**
+   * Remove item from cart
+   */
   const removeItem = useCallback(async (itemId: string) => {
     try {
       setLoading(true);
@@ -97,6 +127,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [push]);
 
+  /**
+   * Clear entire cart
+   */
   const clearCart = useCallback(async () => {
     try {
       setLoading(true);
@@ -114,9 +147,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [push]);
 
-  const itemCount = cart?.itens.reduce((sum, item) => sum + item.quantidade, 0) || 0;
+  /**
+   * Calculate total item count
+   * Memoized to prevent recalculation on every render
+   */
+  const itemCount = useMemo(() => {
+    return cart?.itens.reduce((sum, item) => sum + item.quantidade, 0) || 0;
+  }, [cart?.itens]);
 
-  const value: CartContextType = {
+  /**
+   * Memoized context value to prevent unnecessary re-renders
+   */
+  const value = useMemo<CartContextType>(() => ({
     cart,
     loading,
     error,
@@ -127,11 +169,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearCart,
     itemCount,
     lastAddedItemId,
-  };
+  }), [
+    cart,
+    loading,
+    error,
+    fetchCart,
+    addItem,
+    updateItem,
+    removeItem,
+    clearCart,
+    itemCount,
+    lastAddedItemId,
+  ]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
+/**
+ * Hook to use cart context
+ * 
+ * @throws Error if used outside CartProvider
+ */
 export const useCartContext = () => {
   const context = useContext(CartContext);
   if (!context) {

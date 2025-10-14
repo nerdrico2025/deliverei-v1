@@ -1,5 +1,12 @@
+/**
+ * Subscription Context
+ * 
+ * Manages subscription (assinatura) state
+ * 
+ * @optimized Phase 2 - Added memoization and performance optimizations
+ */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { assinaturasApi, Assinatura } from '../services/backendApi';
 import { useToast } from '../ui/feedback/ToastContext';
 
@@ -15,12 +22,22 @@ interface AssinaturaContextType {
 
 const AssinaturaContext = createContext<AssinaturaContextType | undefined>(undefined);
 
+/**
+ * Subscription Provider Component
+ * 
+ * Provides subscription state and operations
+ * Optimized with useCallback and useMemo
+ */
 export const AssinaturaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [assinatura, setAssinatura] = useState<Assinatura | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { push } = useToast();
 
+  /**
+   * Fetch subscription data
+   * Memoized to prevent recreation
+   */
   const fetchAssinatura = useCallback(async () => {
     try {
       setLoading(true);
@@ -30,54 +47,87 @@ export const AssinaturaProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Erro ao carregar assinatura';
       setError(errorMsg);
-      console.error('Erro ao buscar assinatura:', err);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Erro ao buscar assinatura:', err);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
+  /**
+   * Check subscription limits
+   * Memoized to prevent recreation
+   */
   const verificarLimites = useCallback(() => {
     if (!assinatura) {
       return { pedidosDisponivel: false, produtosDisponivel: false };
     }
 
-    const pedidosDisponivel = assinatura.plano.limitePedidos === -1 || 
-                              assinatura.usoPedidos < assinatura.plano.limitePedidos;
-    const produtosDisponivel = assinatura.plano.limiteProdutos === -1 || 
-                               assinatura.usoProdutos < assinatura.plano.limiteProdutos;
+    const pedidosDisponivel =
+      assinatura.plano.limitePedidos === -1 ||
+      assinatura.usoPedidos < assinatura.plano.limitePedidos;
+    const produtosDisponivel =
+      assinatura.plano.limiteProdutos === -1 ||
+      assinatura.usoProdutos < assinatura.plano.limiteProdutos;
 
     return { pedidosDisponivel, produtosDisponivel };
   }, [assinatura]);
 
-  const usoPedidosPercentual = assinatura && assinatura.plano.limitePedidos !== -1
-    ? (assinatura.usoPedidos / assinatura.plano.limitePedidos) * 100
-    : 0;
+  /**
+   * Calculate usage percentages
+   * Memoized to prevent recalculation on every render
+   */
+  const usoPedidosPercentual = useMemo(() => {
+    if (!assinatura || assinatura.plano.limitePedidos === -1) return 0;
+    return (assinatura.usoPedidos / assinatura.plano.limitePedidos) * 100;
+  }, [assinatura]);
 
-  const usoProdutosPercentual = assinatura && assinatura.plano.limiteProdutos !== -1
-    ? (assinatura.usoProdutos / assinatura.plano.limiteProdutos) * 100
-    : 0;
+  const usoProdutosPercentual = useMemo(() => {
+    if (!assinatura || assinatura.plano.limiteProdutos === -1) return 0;
+    return (assinatura.usoProdutos / assinatura.plano.limiteProdutos) * 100;
+  }, [assinatura]);
 
+  /**
+   * Fetch subscription on mount
+   */
   useEffect(() => {
     fetchAssinatura();
   }, [fetchAssinatura]);
 
-  return (
-    <AssinaturaContext.Provider
-      value={{
-        assinatura,
-        loading,
-        error,
-        fetchAssinatura,
-        verificarLimites,
-        usoPedidosPercentual,
-        usoProdutosPercentual,
-      }}
-    >
-      {children}
-    </AssinaturaContext.Provider>
+  /**
+   * Memoized context value to prevent unnecessary re-renders
+   */
+  const value = useMemo<AssinaturaContextType>(
+    () => ({
+      assinatura,
+      loading,
+      error,
+      fetchAssinatura,
+      verificarLimites,
+      usoPedidosPercentual,
+      usoProdutosPercentual,
+    }),
+    [
+      assinatura,
+      loading,
+      error,
+      fetchAssinatura,
+      verificarLimites,
+      usoPedidosPercentual,
+      usoProdutosPercentual,
+    ]
   );
+
+  return <AssinaturaContext.Provider value={value}>{children}</AssinaturaContext.Provider>;
 };
 
+/**
+ * Hook to use subscription context
+ * 
+ * @throws Error if used outside AssinaturaProvider
+ */
 export const useAssinatura = () => {
   const context = useContext(AssinaturaContext);
   if (context === undefined) {
