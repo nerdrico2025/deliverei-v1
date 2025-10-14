@@ -5,7 +5,12 @@ import { UpdateStatusPedidoDto } from './dto/update-status-pedido.dto';
 import { FiltrarPedidosDto } from './dto/filtrar-pedidos.dto';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
 import { WhatsappService } from '../modules/whatsapp/whatsapp.service';
-import { validateEntityExists, validateOwnershipOrAdmin } from '../utils';
+import { 
+  validateEntityExists, 
+  validateOwnershipOrAdmin,
+  paginatedResponse,
+  calculatePagination,
+} from '../utils';
 
 @Injectable()
 export class PedidosService {
@@ -72,15 +77,7 @@ export class PedidosService {
       this.prisma.pedido.count({ where }),
     ]);
 
-    return {
-      pedidos,
-      paginacao: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return paginatedResponse(pedidos, calculatePagination(total, page, limit));
   }
 
   async findMeusPedidos(usuarioId: string, empresaId: string, page: number = 1, limit: number = 10) {
@@ -117,15 +114,7 @@ export class PedidosService {
       }),
     ]);
 
-    return {
-      pedidos,
-      paginacao: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return paginatedResponse(pedidos, calculatePagination(total, page, limit));
   }
 
   async findOne(id: string, empresaId: string, usuarioId?: string) {

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateProdutoDto, UpdateProdutoDto } from './dto';
+import { paginatedResponse, calculatePagination } from '../../utils';
 
 @Injectable()
 export class ProdutosService {
@@ -58,15 +59,7 @@ export class ProdutosService {
       this.prisma.produto.count({ where }),
     ]);
 
-    return {
-      data: produtos,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return paginatedResponse(produtos, calculatePagination(total, page, limit));
   }
 
   async findOne(id: string, empresaId: string) {
