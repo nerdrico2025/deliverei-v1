@@ -1,4 +1,13 @@
+/**
+ * Dashboard API Service
+ * 
+ * Service for fetching dashboard statistics and analytics data
+ * 
+ * @refactored Phase 2 - Improved error handling and documentation
+ */
+
 import apiClient from './apiClient';
+import { getErrorMessage, logError } from './api.utils';
 
 export interface DashboardStats {
   pedidos: {
@@ -41,34 +50,39 @@ export interface PopularProduct {
 }
 
 /**
- * Dashboard API service
- * Connects to the backend dashboard endpoints
+ * Dashboard API Service
+ * 
+ * Connects to backend dashboard endpoints for analytics data
  */
 export const dashboardApi = {
   /**
    * Get dashboard statistics
+   * 
    * @param startDate - Optional start date for filtering
    * @param endDate - Optional end date for filtering
    * @returns Dashboard statistics including sales, orders, and products
+   * @throws Error if request fails
    */
   async getEstatisticas(startDate?: Date, endDate?: Date): Promise<DashboardStats> {
     try {
       const params: Record<string, string> = {};
       if (startDate) params.startDate = startDate.toISOString();
       if (endDate) params.endDate = endDate.toISOString();
-      
+
       const response = await apiClient.get('/dashboard/estatisticas', { params });
       return response.data;
     } catch (error) {
-      console.error('Error fetching dashboard statistics:', error);
-      throw error;
+      logError('dashboardApi.getEstatisticas', error);
+      throw new Error(getErrorMessage(error));
     }
   },
 
   /**
-   * Get sales chart data
+   * Get sales chart data for a specific period
+   * 
    * @param periodo - Period to fetch (dia, semana, mes)
    * @returns Array of sales data points
+   * @throws Error if request fails
    */
   async getGraficoVendas(periodo: 'dia' | 'semana' | 'mes' = 'dia'): Promise<SalesDataPoint[]> {
     try {
@@ -77,37 +91,45 @@ export const dashboardApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Error fetching sales chart data:', error);
-      throw error;
+      logError('dashboardApi.getGraficoVendas', error);
+      throw new Error(getErrorMessage(error));
     }
   },
 
   /**
    * Get popular products
-   * @param limit - Number of products to fetch
+   * 
+   * @param limit - Number of products to fetch (default: 10)
    * @param startDate - Optional start date for filtering
    * @param endDate - Optional end date for filtering
    * @returns Array of popular products
+   * @throws Error if request fails
    */
-  async getProdutosPopulares(limit: number = 10, startDate?: Date, endDate?: Date): Promise<PopularProduct[]> {
+  async getProdutosPopulares(
+    limit: number = 10,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<PopularProduct[]> {
     try {
       const params: Record<string, string> = { limit: limit.toString() };
       if (startDate) params.startDate = startDate.toISOString();
       if (endDate) params.endDate = endDate.toISOString();
-      
+
       const response = await apiClient.get('/dashboard/produtos-populares', { params });
       return response.data;
     } catch (error) {
-      console.error('Error fetching popular products:', error);
-      throw error;
+      logError('dashboardApi.getProdutosPopulares', error);
+      throw new Error(getErrorMessage(error));
     }
   },
 
   /**
    * Get sales chart data with custom date range
+   * 
    * @param startDate - Start date
    * @param endDate - End date
    * @returns Array of sales data points
+   * @throws Error if request fails
    */
   async getGraficoVendasCustom(startDate: Date, endDate: Date): Promise<SalesDataPoint[]> {
     try {
@@ -119,8 +141,8 @@ export const dashboardApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Error fetching custom sales chart data:', error);
-      throw error;
+      logError('dashboardApi.getGraficoVendasCustom', error);
+      throw new Error(getErrorMessage(error));
     }
   },
 };
