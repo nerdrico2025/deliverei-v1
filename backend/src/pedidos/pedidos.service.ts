@@ -256,21 +256,24 @@ export class PedidosService {
         'CANCELADO',
       );
 
-      // Opcional: Restaurar estoque dos produtos (se aplicável)
+      // Opcional: Restaurar estoque dos produtos (otimização: updates em paralelo)
       const itens = await tx.itemPedido.findMany({
         where: { pedidoId: id },
+        select: { produtoId: true, quantidade: true },
       });
 
-      for (const item of itens) {
-        await tx.produto.update({
-          where: { id: item.produtoId },
-          data: {
-            estoque: {
-              increment: item.quantidade,
+      await Promise.all(
+        itens.map((item) =>
+          tx.produto.update({
+            where: { id: item.produtoId },
+            data: {
+              estoque: {
+                increment: item.quantidade,
+              },
             },
-          },
-        });
-      }
+          }),
+        ),
+      );
 
       return cancelado;
     });

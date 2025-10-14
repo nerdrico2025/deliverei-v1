@@ -1,5 +1,5 @@
 
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
 import { validateEntityExists, validateOwnershipOrAdmin } from '../utils';

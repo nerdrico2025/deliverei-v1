@@ -194,6 +194,7 @@ model ItemPedido {
 
   @@index([pedidoId])
   @@index([produtoId])
+  @@index([pedidoId, produtoId])
   @@map("itens_pedido")
 }
 
@@ -255,6 +256,7 @@ model Notificacao {
 
   @@index([usuarioId])
   @@index([pedidoId])
+  @@index([usuarioId, lida])
   @@map("notificacoes")
 }
 

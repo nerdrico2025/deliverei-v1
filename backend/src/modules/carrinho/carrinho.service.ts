@@ -287,29 +287,31 @@ export class CarrinhoService {
         },
       });
 
-      // Criar itens do pedido
-      for (const item of carrinho.itens) {
-        await tx.itemPedido.create({
-          data: {
-            pedidoId: novoPedido.id,
-            produtoId: item.produtoId,
-            quantidade: item.quantidade,
-            precoUnitario: item.precoUnitario,
-            subtotal: new Decimal(Number(item.precoUnitario) * item.quantidade),
-            observacoes: item.observacoes,
-          },
-        });
+      // Criar itens do pedido (otimização: createMany ao invés de loop)
+      await tx.itemPedido.createMany({
+        data: carrinho.itens.map((item) => ({
+          pedidoId: novoPedido.id,
+          produtoId: item.produtoId,
+          quantidade: item.quantidade,
+          precoUnitario: item.precoUnitario,
+          subtotal: new Decimal(Number(item.precoUnitario) * item.quantidade),
+          observacoes: item.observacoes,
+        })),
+      });
 
-        // Atualizar estoque
-        await tx.produto.update({
-          where: { id: item.produtoId },
-          data: {
-            estoque: {
-              decrement: item.quantidade,
+      // Atualizar estoque de todos os produtos (otimização: updates em paralelo)
+      await Promise.all(
+        carrinho.itens.map((item) =>
+          tx.produto.update({
+            where: { id: item.produtoId },
+            data: {
+              estoque: {
+                decrement: item.quantidade,
+              },
             },
-          },
-        });
-      }
+          }),
+        ),
+      );
 
       // Limpar carrinho
       await tx.itemCarrinho.deleteMany({

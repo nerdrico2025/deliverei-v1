@@ -17,71 +17,76 @@ export class DashboardService {
 
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
 
-    // Pedidos de hoje
-    const pedidosHoje = await this.prisma.pedido.count({
-      where: {
-        empresaId,
-        createdAt: { gte: hoje },
-      },
-    });
-
-    // Pedidos da semana
-    const pedidosSemana = await this.prisma.pedido.count({
-      where: {
-        empresaId,
-        createdAt: { gte: inicioSemana },
-      },
-    });
-
-    // Pedidos do mês
-    const pedidosMes = await this.prisma.pedido.count({
-      where: {
-        empresaId,
-        createdAt: { gte: inicioMes },
-      },
-    });
-
-    // Vendas de hoje
-    const vendasHoje = await this.prisma.pedido.aggregate({
-      where: {
-        empresaId,
-        createdAt: { gte: hoje },
-        status: { notIn: ['CANCELADO'] },
-      },
-      _sum: { total: true },
-    });
-
-    // Vendas da semana
-    const vendasSemana = await this.prisma.pedido.aggregate({
-      where: {
-        empresaId,
-        createdAt: { gte: inicioSemana },
-        status: { notIn: ['CANCELADO'] },
-      },
-      _sum: { total: true },
-    });
-
-    // Vendas do mês
-    const vendasMes = await this.prisma.pedido.aggregate({
-      where: {
-        empresaId,
-        createdAt: { gte: inicioMes },
-        status: { notIn: ['CANCELADO'] },
-      },
-      _sum: { total: true },
-    });
+    // Otimização: Executar todas as queries em paralelo
+    const [
+      pedidosHoje,
+      pedidosSemana,
+      pedidosMes,
+      vendasHoje,
+      vendasSemana,
+      vendasMes,
+      pedidosPorStatus,
+    ] = await Promise.all([
+      // Pedidos de hoje
+      this.prisma.pedido.count({
+        where: {
+          empresaId,
+          createdAt: { gte: hoje },
+        },
+      }),
+      // Pedidos da semana
+      this.prisma.pedido.count({
+        where: {
+          empresaId,
+          createdAt: { gte: inicioSemana },
+        },
+      }),
+      // Pedidos do mês
+      this.prisma.pedido.count({
+        where: {
+          empresaId,
+          createdAt: { gte: inicioMes },
+        },
+      }),
+      // Vendas de hoje
+      this.prisma.pedido.aggregate({
+        where: {
+          empresaId,
+          createdAt: { gte: hoje },
+          status: { notIn: ['CANCELADO'] },
+        },
+        _sum: { total: true },
+      }),
+      // Vendas da semana
+      this.prisma.pedido.aggregate({
+        where: {
+          empresaId,
+          createdAt: { gte: inicioSemana },
+          status: { notIn: ['CANCELADO'] },
+        },
+        _sum: { total: true },
+      }),
+      // Vendas do mês
+      this.prisma.pedido.aggregate({
+        where: {
+          empresaId,
+          createdAt: { gte: inicioMes },
+          status: { notIn: ['CANCELADO'] },
+        },
+        _sum: { total: true },
+      }),
+      // Pedidos por status
+      this.prisma.pedido.groupBy({
+        by: ['status'],
+        where: { empresaId },
+        _count: true,
+      }),
+    ]);
 
     // Ticket médio
     const ticketMedio = pedidosMes > 0 
       ? Number(vendasMes._sum.total || 0) / pedidosMes 
       : 0;
-
-    // Pedidos por status
-    const pedidosPorStatus = await this.prisma.pedido.groupBy({
-      by: ['status'],
-      where: { empresaId },
-      _count: true,
-    });
 
     // Produtos mais vendidos
     const produtosMaisVendidos = await this.prisma.itemPedido.groupBy({
