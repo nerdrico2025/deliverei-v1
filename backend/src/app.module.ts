@@ -12,7 +12,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CuponsModule } from './cupons/cupons.module';
 import { AvaliacoesModule } from './avaliacoes/avaliacoes.module';
-import { NotificacoesModule } from './notificacoes/notificacoes.module';
+import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { AssinaturasModule } from './modules/assinaturas/assinaturas.module';
