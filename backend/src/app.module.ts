@@ -60,6 +60,8 @@ export class AppModule implements NestModule {
         'api/dashboard/(.*)',
         // Excluir rotas de notificações - usam JWT para identificar usuário
         'api/notificacoes/(.*)',
+        // Excluir rotas de produtos - usam JWT para identificar empresa
+        'api/produtos/(.*)',
         // Excluir rotas de autenticação
         'api/auth/(.*)',
       )
