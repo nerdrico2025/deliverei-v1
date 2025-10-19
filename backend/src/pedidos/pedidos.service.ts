@@ -3,7 +3,7 @@ import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { UpdateStatusPedidoDto } from './dto/update-status-pedido.dto';
 import { FiltrarPedidosDto } from './dto/filtrar-pedidos.dto';
-import { NotificacoesService } from '../notificacoes/notificacoes.service';
+import { NotificacoesService } from '../modules/notificacoes/notificacoes.service';
 import { WhatsappService } from '../modules/whatsapp/whatsapp.service';
 import { 
   validateEntityExists, 
@@ -192,6 +192,7 @@ export class PedidosService {
       await this.notificacoesService.notificarMudancaStatus(
         pedido.id,
         pedido.clienteId,
+        empresaId,
         pedido.numero,
         updateStatusDto.status,
       );
