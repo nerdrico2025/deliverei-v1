@@ -90,11 +90,13 @@ export class NotificacoesService {
       const newNotificacao = {
         id: `notif-${Date.now()}`,
         ...createNotificacaoDto,
+        empresaId: createNotificacaoDto.empresaId || '',
+        pedidoId: createNotificacaoDto.pedidoId || '',
         lida: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      this.mockNotificacoes.push(newNotificacao);
+      this.mockNotificacoes.push(newNotificacao as any);
       this.logger.log(`[MOCK] Notificação criada: ${newNotificacao.id}`);
       return newNotificacao;
     }
@@ -129,14 +131,15 @@ export class NotificacoesService {
         (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
       );
 
-      const { skip, take } = calculatePagination(page, limit);
-      const paginatedData = filtered.slice(skip, skip + take);
+      const total = filtered.length;
+      const skip = (page - 1) * limit;
+      const paginatedData = filtered.slice(skip, skip + limit);
 
       this.logger.log(
         `[MOCK] Listando notificações do usuário ${usuarioId} (página ${page})`,
       );
 
-      return paginatedResponse(paginatedData, filtered.length, page, limit);
+      return paginatedResponse(paginatedData, calculatePagination(total, page, limit));
     }
 
     const where: any = { usuarioId };
@@ -149,6 +152,8 @@ export class NotificacoesService {
       where.lida = lida;
     }
 
+    const skip = (page - 1) * limit;
+    
     const [data, total] = await Promise.all([
       this.prisma.notificacao.findMany({
         where,
@@ -162,13 +167,13 @@ export class NotificacoesService {
           },
         },
         orderBy: { createdAt: 'desc' },
-        skip: calculatePagination(page, limit).skip,
+        skip,
         take: limit,
       }),
       this.prisma.notificacao.count({ where }),
     ]);
 
-    return paginatedResponse(data, total, page, limit);
+    return paginatedResponse(data, calculatePagination(total, page, limit));
   }
 
   async findOne(id: string, usuarioId: string) {

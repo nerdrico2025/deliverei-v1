@@ -92,14 +92,18 @@ export class ProdutosService {
     if (this.useMockData) {
       const newProduto = {
         id: `mock-${Date.now()}`,
-        ...createProdutoDto,
+        nome: createProdutoDto.nome,
+        descricao: createProdutoDto.descricao || '',
+        preco: createProdutoDto.preco,
+        imagem: createProdutoDto.imagem || '',
         ativo: createProdutoDto.ativo ?? true,
         estoque: createProdutoDto.estoque ?? 0,
+        categoria: createProdutoDto.categoria || '',
         empresaId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      this.mockProdutos.push(newProduto);
+      this.mockProdutos.push(newProduto as any);
       return newProduto;
     }
 
@@ -120,7 +124,8 @@ export class ProdutosService {
     ativo?: boolean,
   ) {
     if (this.useMockData) {
-      let filtered = this.mockProdutos.filter(p => p.empresaId === empresaId);
+      // Return mock products with the current empresaId (for development/testing)
+      let filtered = this.mockProdutos.map(p => ({ ...p, empresaId }));
 
       if (categoria) {
         filtered = filtered.filter(p => p.categoria === categoria);
@@ -182,15 +187,14 @@ export class ProdutosService {
 
   async findOne(id: string, empresaId: string) {
     if (this.useMockData) {
-      const produto = this.mockProdutos.find(
-        p => p.id === id && p.empresaId === empresaId,
-      );
+      const produto = this.mockProdutos.find(p => p.id === id);
 
       if (!produto) {
         throw new NotFoundException('Produto não encontrado');
       }
 
-      return produto;
+      // Return with the current empresaId (for development/testing)
+      return { ...produto, empresaId };
     }
 
     const produto = await this.prisma.produto.findFirst({
@@ -213,9 +217,7 @@ export class ProdutosService {
     empresaId: string,
   ) {
     if (this.useMockData) {
-      const index = this.mockProdutos.findIndex(
-        p => p.id === id && p.empresaId === empresaId,
-      );
+      const index = this.mockProdutos.findIndex(p => p.id === id);
 
       if (index === -1) {
         throw new NotFoundException('Produto não encontrado');
@@ -224,6 +226,7 @@ export class ProdutosService {
       this.mockProdutos[index] = {
         ...this.mockProdutos[index],
         ...updateProdutoDto,
+        empresaId, // Update with current empresaId
         updatedAt: new Date().toISOString(),
       };
 
@@ -241,9 +244,7 @@ export class ProdutosService {
 
   async remove(id: string, empresaId: string) {
     if (this.useMockData) {
-      const index = this.mockProdutos.findIndex(
-        p => p.id === id && p.empresaId === empresaId,
-      );
+      const index = this.mockProdutos.findIndex(p => p.id === id);
 
       if (index === -1) {
         throw new NotFoundException('Produto não encontrado');
@@ -252,6 +253,7 @@ export class ProdutosService {
       this.mockProdutos[index] = {
         ...this.mockProdutos[index],
         ativo: false,
+        empresaId, // Update with current empresaId
         updatedAt: new Date().toISOString(),
       };
 
@@ -270,9 +272,7 @@ export class ProdutosService {
 
   async hardRemove(id: string, empresaId: string) {
     if (this.useMockData) {
-      const index = this.mockProdutos.findIndex(
-        p => p.id === id && p.empresaId === empresaId,
-      );
+      const index = this.mockProdutos.findIndex(p => p.id === id);
 
       if (index === -1) {
         throw new NotFoundException('Produto não encontrado');
