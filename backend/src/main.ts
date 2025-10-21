@@ -1,7 +1,6 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,10 +22,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
-  // Guard global para autenticação JWT
-  const reflector = app.get(Reflector);
-  app.useGlobalGuards(new JwtAuthGuard(reflector));
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

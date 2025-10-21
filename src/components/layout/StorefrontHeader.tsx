@@ -1,21 +1,35 @@
-import React, { useState, useRef, useEffect } from "react";
-import { ShoppingCart, User, LogOut, Package, ChevronDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useClientAuth } from "../../contexts/ClientAuthContext";
+import React, { useState, useRef, useEffect } from 'react';
+import { ShoppingCart, Search, Menu, ChevronDown, Package, LogOut, User } from 'lucide-react';
 
-export const StorefrontHeader: React.FC<{
+interface StorefrontHeaderProps {
+  cartItemsCount?: number;
+  onCartClick?: () => void;
+  onSearchClick?: () => void;
+  onMenuClick?: () => void;
+  storeName?: string;
   logoUrl?: string;
-  storeName: string;
+  isAuthenticated?: boolean;
+  cliente?: {
+    nome: string;
+    email: string;
+  };
   storeSlug?: string;
-  onCartClick: () => void;
-  cartCount: number;
-}> = ({ logoUrl, storeName, storeSlug, onCartClick, cartCount }) => {
-  const navigate = useNavigate();
-  const { isAuthenticated, cliente, logout } = useClientAuth();
+}
+
+export const StorefrontHeader = ({
+  cartItemsCount = 0,
+  onCartClick,
+  onSearchClick,
+  onMenuClick,
+  storeName = "Deliverei",
+  logoUrl,
+  isAuthenticated = false,
+  cliente,
+  storeSlug = "loja"
+}: StorefrontHeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -23,26 +37,26 @@ export const StorefrontHeader: React.FC<{
       }
     };
 
-    if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [menuOpen]);
+  }, []);
 
   const handleLogin = () => {
-    navigate(`/loja/${storeSlug}/login`);
+    // Navigate to login - this would need proper navigation implementation
+    console.log(`Navigate to /loja/${storeSlug}/login`);
   };
 
   const handleLogout = () => {
-    logout();
+    // Logout logic - this would need proper auth implementation
+    console.log('Logout');
     setMenuOpen(false);
   };
 
   const handleMyOrders = () => {
-    navigate("/meus-pedidos");
+    // Navigate to orders - this would need proper navigation implementation
+    console.log('Navigate to /meus-pedidos');
     setMenuOpen(false);
   };
 
@@ -59,8 +73,29 @@ export const StorefrontHeader: React.FC<{
           <span className="font-bold text-[#D22630]">{storeName}</span>
         </div>
 
+        {/* Search Bar - Desktop */}
+        <div className="hidden md:flex flex-1 max-w-lg mx-8">
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="Buscar produtos..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onClick={onSearchClick}
+            />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          </div>
+        </div>
+
         {/* Right side: User menu + Cart */}
         <div className="flex items-center gap-3">
+          {/* Search Button - Mobile */}
+          <button
+            onClick={onSearchClick}
+            className="p-2 text-gray-600 hover:text-gray-900 transition-colors md:hidden"
+          >
+            <Search className="h-6 w-6" />
+          </button>
+
           {/* User Menu */}
           {isAuthenticated && cliente ? (
             <div className="relative" ref={menuRef}>
@@ -114,11 +149,19 @@ export const StorefrontHeader: React.FC<{
           {/* Cart Button */}
           <button onClick={onCartClick} className="relative" aria-label="Carrinho">
             <ShoppingCart className="text-[#D22630]" size={24} />
-            {cartCount > 0 && (
+            {cartItemsCount > 0 && (
               <span className="absolute -right-2 -top-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#FFC107] px-1 text-xs text-[#1F2937] font-medium">
-                {cartCount}
+                {cartItemsCount}
               </span>
             )}
+          </button>
+
+          {/* Menu Button - Mobile */}
+          <button
+            onClick={onMenuClick}
+            className="p-2 text-gray-600 hover:text-gray-900 transition-colors md:hidden"
+          >
+            <Menu className="h-6 w-6" />
           </button>
         </div>
       </div>

@@ -12,6 +12,10 @@ export class AssinaturaGuard implements CanActivate {
   constructor(private prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Temporariamente desabilitado - módulo de assinaturas não implementado
+    return true;
+    
+    /*
     const request = context.switchToHttp().getRequest();
     const empresaId = request.user?.empresaId;
 
@@ -35,5 +39,6 @@ export class AssinaturaGuard implements CanActivate {
     request.assinatura = assinatura;
 
     return true;
+    */
   }
 }

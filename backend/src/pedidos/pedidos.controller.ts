@@ -16,7 +16,12 @@ import { FiltrarPedidosDto } from './dto/filtrar-pedidos.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
-import { Role } from '@prisma/client';
+// Enum TipoUsuario como constantes para compatibilidade com SQLite
+export const TipoUsuario = {
+  CLIENTE: 'CLIENTE',
+  ADMIN_EMPRESA: 'ADMIN_EMPRESA',
+  SUPER_ADMIN: 'SUPER_ADMIN'
+} as const;
 
 @Controller('pedidos')
 @UseGuards(JwtAuthGuard)
@@ -25,7 +30,7 @@ export class PedidosController {
 
   @Get()
   @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN_EMPRESA)
+  @Roles(TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA)
   findAll(@Query() filtros: FiltrarPedidosDto, @Request() req) {
     return this.pedidosService.findAll(filtros, req.user.empresaId);
   }
@@ -46,7 +51,7 @@ export class PedidosController {
 
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
-    const isAdmin = [Role.SUPER_ADMIN, Role.ADMIN_EMPRESA].includes(req.user.role);
+    const isAdmin = [TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA].includes(req.user.role);
     return this.pedidosService.findOne(
       id,
       req.user.empresaId,
@@ -56,7 +61,7 @@ export class PedidosController {
 
   @Patch(':id/status')
   @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN_EMPRESA)
+  @Roles(TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA)
   updateStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateStatusPedidoDto,
@@ -67,7 +72,7 @@ export class PedidosController {
 
   @Delete(':id')
   cancel(@Param('id') id: string, @Request() req) {
-    const isAdmin = [Role.SUPER_ADMIN, Role.ADMIN_EMPRESA].includes(req.user.role);
+    const isAdmin = [TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA].includes(req.user.role);
     return this.pedidosService.cancel(id, req.user.empresaId, req.user.sub, isAdmin);
   }
 }

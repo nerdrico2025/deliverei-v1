@@ -1,33 +1,44 @@
-
-import { IsString, IsOptional, IsDateString, IsNumber, Min } from 'class-validator';
+import { IsOptional, IsEnum, IsString, IsDateString, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class FiltrarPedidosDto {
-  @IsString()
-  @IsOptional()
-  status?: string;
+// Enum StatusPedido como constantes para compatibilidade com SQLite
+export const StatusPedido = {
+  PENDENTE: 'PENDENTE',
+  CONFIRMADO: 'CONFIRMADO',
+  EM_PREPARO: 'EM_PREPARO',
+  SAIU_ENTREGA: 'SAIU_ENTREGA',
+  ENTREGUE: 'ENTREGUE',
+  CANCELADO: 'CANCELADO'
+} as const;
 
-  @IsDateString()
+export type StatusPedidoType = typeof StatusPedido[keyof typeof StatusPedido];
+
+export class FiltrarPedidosDto {
   @IsOptional()
+  @IsEnum(StatusPedido)
+  status?: StatusPedidoType;
+
+  @IsOptional()
+  @IsDateString()
   dataInicio?: string;
 
-  @IsDateString()
   @IsOptional()
+  @IsDateString()
   dataFim?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   usuarioId?: string;
 
-  @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  @IsInt()
   @Min(1)
   page?: number = 1;
 
-  @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  @IsInt()
   @Min(1)
   limit?: number = 10;
 }

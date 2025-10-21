@@ -1,82 +1,40 @@
-/**
- * Helpers para padronizar respostas da API
- */
-
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-  meta?: PaginationMeta;
-}
-
-export interface PaginationMeta {
-  total: number;
-  page: number;
-  limit: number;
+export interface PaginationInfo {
+  currentPage: number;
   totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
 export interface PaginatedResponse<T> {
   data: T[];
-  meta: PaginationMeta;
+  pagination: PaginationInfo;
 }
 
-/**
- * Criar resposta de sucesso
- */
-export function successResponse<T>(
-  data: T,
-  message?: string,
-): ApiResponse<T> {
+export function calculatePagination(
+  totalItems: number,
+  currentPage: number,
+  itemsPerPage: number
+): PaginationInfo {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  
   return {
-    success: true,
-    data,
-    ...(message && { message }),
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    hasNextPage: currentPage < totalPages,
+    hasPreviousPage: currentPage > 1,
   };
 }
 
-/**
- * Criar resposta paginada
- */
 export function paginatedResponse<T>(
   data: T[],
-  meta: PaginationMeta,
-): ApiResponse<PaginatedResponse<T>> {
+  pagination: PaginationInfo
+): PaginatedResponse<T> {
   return {
-    success: true,
-    data: {
-      data,
-      meta,
-    },
-  };
-}
-
-/**
- * Criar resposta de erro
- */
-export function errorResponse(
-  error: string,
-  statusCode: number = 400,
-): ApiResponse {
-  return {
-    success: false,
-    error,
-  };
-}
-
-/**
- * Calcular metadados de paginação
- */
-export function calculatePagination(
-  total: number,
-  page: number = 1,
-  limit: number = 10,
-): PaginationMeta {
-  return {
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
+    data,
+    pagination,
   };
 }

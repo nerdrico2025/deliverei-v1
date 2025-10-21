@@ -18,6 +18,7 @@ async function main() {
   const empresaPizza = await prisma.empresa.create({
     data: {
       nome: 'Pizza Express',
+      email: 'contato@pizza-express.com',
       slug: 'pizza-express',
       subdominio: 'pizza-express',
       ativo: true,
@@ -30,6 +31,7 @@ async function main() {
   const empresaBurger = await prisma.empresa.create({
     data: {
       nome: 'Burger King',
+      email: 'contato@burger-king.com',
       slug: 'burger-king',
       subdominio: 'burger-king',
       ativo: true,
@@ -45,7 +47,7 @@ async function main() {
       email: 'admin@deliverei.com.br',
       senha: hashedPasswordAdmin,
       nome: 'Super Administrador',
-      role: 'SUPER_ADMIN',
+      tipo: 'SUPER_ADMIN',
       ativo: true,
     },
   });
@@ -59,7 +61,7 @@ async function main() {
       email: 'admin@pizza-express.com',
       senha: hashedPasswordPizza,
       nome: 'Admin Pizza Express',
-      role: 'ADMIN_EMPRESA',
+      tipo: 'ADMIN_EMPRESA',
       empresaId: empresaPizza.id,
       ativo: true,
     },
@@ -73,7 +75,7 @@ async function main() {
       email: 'admin@burger-king.com',
       senha: hashedPasswordPizza, // Same password as Pizza Express
       nome: 'Admin Burger King',
-      role: 'ADMIN_EMPRESA',
+      tipo: 'ADMIN_EMPRESA',
       empresaId: empresaBurger.id,
       ativo: true,
     },
@@ -88,7 +90,7 @@ async function main() {
       email: 'cliente@exemplo.com',
       senha: hashedPasswordCliente,
       nome: 'João Silva',
-      role: 'CLIENTE',
+      tipo: 'CLIENTE',
       empresaId: empresaPizza.id,
       ativo: true,
     },

@@ -5,6 +5,7 @@ import { ProductCard } from "../../components/commerce/ProductCard";
 import { CartDrawer } from "../../components/commerce/CartDrawer";
 import { useCart } from "../../hooks/useCart";
 import { Button } from "../../components/common/Button";
+import { useToast } from "../../ui/feedback/ToastContext";
 
 type Product = {
   id: string;
@@ -49,7 +50,8 @@ async function fetchProducts(page: number, pageSize: number): Promise<{ items: P
 export default function Vitrine() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const { items: cartItems, add, updateQty, count, lastAddedId } = useCart();
+  const { items: cartItems, addItem, updateQuantity, totalItems } = useCart();
+  const { success } = useToast();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [page, setPage] = useState(0);
@@ -57,6 +59,7 @@ export default function Vitrine() {
   const [loading, setLoading] = useState(false);
   const [useInfinite, setUseInfinite] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
+  const [lastAddedId, setLastAddedId] = useState<string>();
 
   const canLoadMore = useMemo(() => products.length < total, [products.length, total]);
 
@@ -94,11 +97,11 @@ export default function Vitrine() {
     return () => obs.disconnect();
   }, [useInfinite, loading, canLoadMore]);
 
-  const onAddFromCard = (id: string) => {
-    const p = products.find((x) => x.id === id);
-    if (!p) return;
-    add({ id: p.id, title: p.title, price: p.price }, 1);
+  const onAddFromCard = (product: { id: string; name: string; price: number; image?: string }) => {
+    addItem({ id: product.id, name: product.name, price: product.price, image: product.image });
+    setLastAddedId(product.id);
     setCartOpen(true);
+    success(`${product.name} adicionado ao carrinho!`);
   };
 
   const goCheckout = () => navigate("/storefront/checkout");
@@ -109,13 +112,29 @@ export default function Vitrine() {
     setPage(0);
   };
 
+  // Convert cart items to CartDrawer format
+  const cartDrawerItems = cartItems.map(item => ({
+    id: item.id,
+    title: item.name,
+    qty: item.quantity,
+    price: item.price
+  }));
+
+  // Convert products to ProductCard format
+  const productCardItems = products.map(p => ({
+    id: p.id,
+    name: p.title,
+    price: p.price,
+    image: p.image
+  }));
+
   return (
     <>
       <StorefrontHeader
         storeName="Loja Exemplo"
         storeSlug={slug}
         onCartClick={() => setCartOpen(true)}
-        cartCount={count}
+        cartItemsCount={totalItems}
       />
       <div className="mx-auto max-w-6xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between">
@@ -150,8 +169,8 @@ export default function Vitrine() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} onAdd={onAddFromCard} />
+          {productCardItems.map((p) => (
+            <ProductCard key={p.id} product={p} onAddToCart={onAddFromCard} />
           ))}
           {loading &&
             Array.from({ length: 6 }).map((_, i) => (
@@ -185,12 +204,12 @@ export default function Vitrine() {
 
       <CartDrawer
         open={cartOpen}
-        items={cartItems}
+        items={cartDrawerItems}
         onClose={() => setCartOpen(false)}
-        onQtyChange={updateQty}
+        onQtyChange={(id: string, qty: number) => updateQuantity(id, qty)}
         onCheckout={goCheckout}
         lastAddedId={lastAddedId}
-        onAddToCart={(p) => add({ id: p.id, title: p.title, price: p.price }, p.qty ?? 1)}
+        onAddToCart={(p) => addItem({ id: p.id, name: p.title, price: p.price })}
       />
     </>
   );

@@ -51,7 +51,6 @@ export class PagamentosService {
       data: {
         empresaId,
         pedidoId: dto.pedidoId,
-        tipo: 'PEDIDO',
         metodo: dto.metodo,
         status: 'PENDENTE',
         valor: dto.valor,
@@ -107,7 +106,6 @@ export class PagamentosService {
     return this.prisma.pagamento.findMany({
       where: {
         empresaId,
-        tipo: 'PEDIDO',
       },
       include: {
         pedido: {

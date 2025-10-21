@@ -119,7 +119,6 @@ export class CarrinhoService {
         where: { id: itemExistente.id },
         data: {
           quantidade: novaQuantidade,
-          observacoes: dto.observacoes || itemExistente.observacoes,
         },
         include: {
           produto: true,
@@ -134,7 +133,6 @@ export class CarrinhoService {
         produtoId: dto.produtoId,
         quantidade: dto.quantidade,
         precoUnitario: produto.preco,
-        observacoes: dto.observacoes,
       },
       include: {
         produto: true,
@@ -177,7 +175,6 @@ export class CarrinhoService {
       where: { id: itemId },
       data: {
         quantidade: dto.quantidade,
-        observacoes: dto.observacoes,
       },
       include: {
         produto: true,
@@ -275,9 +272,9 @@ export class CarrinhoService {
       const novoPedido = await tx.pedido.create({
         data: {
           numero: numeroPedido,
-          subtotal: new Decimal(subtotal),
-          desconto: new Decimal(desconto),
-          total: new Decimal(total),
+          subtotal: subtotal,
+          desconto: desconto,
+          total: total,
           clienteId: usuarioId,
           empresaId,
           enderecoEntrega: dto.enderecoEntrega,
@@ -294,8 +291,7 @@ export class CarrinhoService {
           produtoId: item.produtoId,
           quantidade: item.quantidade,
           precoUnitario: item.precoUnitario,
-          subtotal: new Decimal(Number(item.precoUnitario) * item.quantidade),
-          observacoes: item.observacoes,
+          subtotal: Number(item.precoUnitario) * item.quantidade,
         })),
       });
 

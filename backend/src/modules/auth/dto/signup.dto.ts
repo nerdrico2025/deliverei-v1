@@ -1,20 +1,25 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsUUID } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
 
 export class SignupDto {
-  @IsEmail({}, { message: 'Email inválido' })
-  @IsNotEmpty({ message: 'Email é obrigatório' })
+  @IsString({ message: 'Nome deve ser uma string' })
+  nome: string;
+
+  @IsEmail({}, { message: 'Email deve ter um formato válido' })
   email: string;
 
   @IsString({ message: 'Senha deve ser uma string' })
-  @IsNotEmpty({ message: 'Senha é obrigatória' })
-  @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
+  @MinLength(6, { message: 'Senha deve ter pelo menos 6 caracteres' })
   senha: string;
 
-  @IsString({ message: 'Nome deve ser uma string' })
-  @IsNotEmpty({ message: 'Nome é obrigatório' })
-  nome: string;
+  @IsOptional()
+  @IsString({ message: 'Telefone deve ser uma string' })
+  telefone?: string;
 
   @IsOptional()
-  @IsUUID('4', { message: 'EmpresaId deve ser um UUID válido' })
+  @IsString({ message: 'Nome da empresa deve ser uma string' })
+  nomeEmpresa?: string;
+
+  @IsOptional()
+  @IsString({ message: 'ID da empresa deve ser uma string' })
   empresaId?: string;
 }

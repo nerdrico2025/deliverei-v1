@@ -17,7 +17,13 @@ import { ValidarCupomDto } from './dto/validar-cupom.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
-import { Role } from '@prisma/client';
+
+// Enum TipoUsuario como constantes para compatibilidade com SQLite
+const TipoUsuario = {
+  CLIENTE: 'CLIENTE',
+  ADMIN_EMPRESA: 'ADMIN_EMPRESA',
+  SUPER_ADMIN: 'SUPER_ADMIN'
+} as const;
 
 @Controller('cupons')
 @UseGuards(JwtAuthGuard)
@@ -26,28 +32,28 @@ export class CuponsController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN_EMPRESA)
+  @Roles(TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA)
   create(@Body() createCupomDto: CreateCupomDto, @Request() req) {
     return this.cuponsService.create(createCupomDto, req.user.empresaId);
   }
 
   @Get()
   @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN_EMPRESA)
+  @Roles(TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA)
   findAll(@Request() req) {
     return this.cuponsService.findAll(req.user.empresaId);
   }
 
   @Get(':id')
   @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN_EMPRESA)
+  @Roles(TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA)
   findOne(@Param('id') id: string, @Request() req) {
     return this.cuponsService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN_EMPRESA)
+  @Roles(TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA)
   update(
     @Param('id') id: string,
     @Body() updateCupomDto: UpdateCupomDto,
@@ -58,7 +64,7 @@ export class CuponsController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN_EMPRESA)
+  @Roles(TipoUsuario.SUPER_ADMIN, TipoUsuario.ADMIN_EMPRESA)
   remove(@Param('id') id: string, @Request() req) {
     return this.cuponsService.remove(id, req.user.empresaId);
   }

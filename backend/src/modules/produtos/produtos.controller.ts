@@ -18,7 +18,12 @@ import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
 import { CurrentUser } from '../../decorators/current-user.decorator';
-import { Role } from '@prisma/client';
+// Enum TipoUsuario como constantes para compatibilidade com SQLite
+const TipoUsuario = {
+  CLIENTE: 'CLIENTE',
+  ADMIN_EMPRESA: 'ADMIN_EMPRESA',
+  SUPER_ADMIN: 'SUPER_ADMIN'
+} as const;
 
 @Controller('produtos')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -26,7 +31,7 @@ export class ProdutosController {
   constructor(private readonly produtosService: ProdutosService) {}
 
   @Post()
-  @Roles(Role.ADMIN_EMPRESA, Role.SUPER_ADMIN)
+  @Roles(TipoUsuario.ADMIN_EMPRESA, TipoUsuario.SUPER_ADMIN)
   create(
     @Body() createProdutoDto: CreateProdutoDto,
     @CurrentUser('empresaId') empresaId: string,
@@ -35,7 +40,7 @@ export class ProdutosController {
   }
 
   @Get()
-  @Roles(Role.ADMIN_EMPRESA, Role.SUPER_ADMIN)
+  @Roles(TipoUsuario.ADMIN_EMPRESA, TipoUsuario.SUPER_ADMIN)
   findAll(
     @CurrentUser('empresaId') empresaId: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -55,7 +60,7 @@ export class ProdutosController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN_EMPRESA, Role.SUPER_ADMIN)
+  @Roles(TipoUsuario.ADMIN_EMPRESA, TipoUsuario.SUPER_ADMIN)
   findOne(
     @Param('id') id: string,
     @CurrentUser('empresaId') empresaId: string,
@@ -64,7 +69,7 @@ export class ProdutosController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN_EMPRESA, Role.SUPER_ADMIN)
+  @Roles(TipoUsuario.ADMIN_EMPRESA, TipoUsuario.SUPER_ADMIN)
   update(
     @Param('id') id: string,
     @Body() updateProdutoDto: UpdateProdutoDto,
@@ -74,7 +79,7 @@ export class ProdutosController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN_EMPRESA, Role.SUPER_ADMIN)
+  @Roles(TipoUsuario.ADMIN_EMPRESA, TipoUsuario.SUPER_ADMIN)
   remove(
     @Param('id') id: string,
     @CurrentUser('empresaId') empresaId: string,
@@ -83,7 +88,7 @@ export class ProdutosController {
   }
 
   @Delete(':id/hard')
-  @Roles(Role.SUPER_ADMIN)
+  @Roles(TipoUsuario.SUPER_ADMIN)
   hardRemove(
     @Param('id') id: string,
     @CurrentUser('empresaId') empresaId: string,

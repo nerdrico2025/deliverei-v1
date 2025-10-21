@@ -1,20 +1,24 @@
 
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { AssinaturasService } from '../assinaturas/assinaturas.service';
+// import { AssinaturasService } from '../assinaturas/assinaturas.service';
 import { PagamentosService } from '../pagamentos/pagamentos.service';
-import { StripeService } from '../assinaturas/stripe.service';
+// import { StripeService } from '../assinaturas/stripe.service';
 
 @Injectable()
 export class WebhooksService {
   constructor(
     private prisma: PrismaService,
-    private assinaturasService: AssinaturasService,
+    // private assinaturasService: AssinaturasService,
     private pagamentosService: PagamentosService,
-    private stripeService: StripeService,
+    // private stripeService: StripeService,
   ) {}
 
   async processarWebhookStripe(payload: string, signature: string) {
+    // Temporariamente desabilitado - módulo de assinaturas não implementado
+    throw new BadRequestException('Webhook Stripe temporariamente desabilitado');
+    
+    /*
     let evento;
 
     try {
@@ -54,6 +58,7 @@ export class WebhooksService {
 
       throw error;
     }
+    */
   }
 
   async processarWebhookAsaas(body: any, token: string) {

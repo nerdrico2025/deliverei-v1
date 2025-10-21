@@ -13,7 +13,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const { push } = useToast();
+  const { success, error } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -22,7 +22,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      push({ message: "Login realizado com sucesso!", tone: "success" });
+      success("Login realizado com sucesso!");
       
       // Check if there's a redirect location from RequireAuth
       const state = location.state as any;
@@ -51,8 +51,8 @@ export default function Login() {
       }
       
       navigate(redirectPath, { replace: true });
-    } catch (error) {
-      push({ message: "Erro ao fazer login. Tente novamente.", tone: "error" });
+    } catch (err) {
+      error("Erro ao fazer login. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ export default function Login() {
             <div className="font-semibold mb-1">Credenciais de teste:</div>
             <div>• Super Admin: admin@deliverei.com.br / admin123</div>
             <div>• Pizza Express: admin@pizza-express.com / pizza123</div>
-            <div>• Burger King: admin@burger-king.com / pizza123</div>
+            <div>• Burger King: admin@burger-king.com / burger123</div>
             <div>• Cliente: cliente@exemplo.com / cliente123</div>
           </div>
         </div>

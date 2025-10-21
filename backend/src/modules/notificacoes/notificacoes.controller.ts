@@ -18,7 +18,13 @@ import { CreateNotificacaoDto, UpdateNotificacaoDto } from './dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RolesGuard } from '../../guards/roles.guard';
 import { Roles } from '../../decorators/roles.decorator';
-import { Role } from '@prisma/client';
+
+// Enum TipoUsuario como constantes para compatibilidade com SQLite
+const TipoUsuario = {
+  CLIENTE: 'CLIENTE',
+  ADMIN_EMPRESA: 'ADMIN_EMPRESA',
+  SUPER_ADMIN: 'SUPER_ADMIN'
+} as const;
 
 @Controller('notificacoes')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,7 +36,7 @@ export class NotificacoesController {
    * Apenas ADMIN_EMPRESA e SUPER_ADMIN podem criar notificações
    */
   @Post()
-  @Roles(Role.ADMIN_EMPRESA, Role.SUPER_ADMIN)
+  @Roles(TipoUsuario.ADMIN_EMPRESA, TipoUsuario.SUPER_ADMIN)
   create(@Body() createNotificacaoDto: CreateNotificacaoDto) {
     return this.notificacoesService.create(createNotificacaoDto);
   }

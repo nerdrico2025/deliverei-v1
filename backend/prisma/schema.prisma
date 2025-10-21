@@ -6,61 +6,49 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  SUPER_ADMIN
-  ADMIN_EMPRESA
-  CLIENTE
-}
-
-enum StatusPedido {
-  PENDENTE
-  CONFIRMADO
-  EM_PREPARO
-  SAIU_ENTREGA
-  ENTREGUE
-  CANCELADO
-}
+// Enums convertidos para strings para compatibilidade com SQLite
+// StatusPedido: PENDENTE, CONFIRMADO, EM_PREPARO, SAIU_ENTREGA, ENTREGUE, CANCELADO
+// TipoUsuario: CLIENTE, ADMIN_EMPRESA, SUPER_ADMIN
 
 model Empresa {
-  id              String   @id @default(uuid())
-  nome            String
-  slug            String   @unique
-  subdominio      String   @unique
-  ativo           Boolean  @default(true)
-  whatsappNumero  String?  @map("whatsapp_numero")
-  whatsappToken   String?  @map("whatsapp_token")
-  asaasCustomerId String?  @map("asaas_customer_id")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(uuid())
+  nome        String
+  email       String   @unique
+  telefone    String?
+  endereco    String?
+  ativo       Boolean  @default(true)
+  slug        String?  @unique
+  subdominio  String?  @unique
+  ativa       Boolean  @default(true)
+  asaasCustomerId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  usuarios          Usuario[]
-  produtos          Produto[]
-  pedidos           Pedido[]
-  carrinhos         Carrinho[]
-  cupons            Cupom[]
-  assinatura        Assinatura?
-  pagamentos        Pagamento[]
-  mensagensWhatsApp MensagemWhatsApp[]
+  usuarios  Usuario[]
+  produtos  Produto[]
+  pedidos   Pedido[]
+  carrinhos Carrinho[]
+  cupons    Cupom[]
+  pagamentos Pagamento[]
 
   @@map("empresas")
 }
 
 model Usuario {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  senha     String
+  id        String      @id @default(uuid())
   nome      String
+  email     String      @unique
+  senha     String
   telefone  String?
-  cpf       String?
-  role      Role     @default(CLIENTE)
+  tipo      String @default("CLIENTE")
+  ativo     Boolean     @default(true)
   empresaId String?
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   empresa      Empresa?       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   pedidos      Pedido[]
@@ -77,7 +65,7 @@ model Produto {
   id        String   @id @default(uuid())
   nome      String
   descricao String?
-  preco     Decimal  @db.Decimal(10, 2)
+  preco     Float
   imagem    String?
   ativo     Boolean  @default(true)
   empresaId String
@@ -101,11 +89,11 @@ model Produto {
 model Pedido {
   id               String        @id @default(uuid())
   numero           String        @unique
-  status           StatusPedido  @default(PENDENTE)
-  subtotal         Decimal       @db.Decimal(10, 2)
-  desconto         Decimal       @default(0) @db.Decimal(10, 2)
-  total            Decimal       @db.Decimal(10, 2)
-  frete            Decimal       @default(0) @db.Decimal(10, 2)
+  status           String  @default("PENDENTE")
+  subtotal         Float
+  desconto         Float         @default(0)
+  total            Float
+  frete            Float         @default(0)
   clienteId        String
   empresaId        String
   enderecoEntrega  String?
@@ -164,11 +152,9 @@ model ItemCarrinho {
   id            String   @id @default(uuid())
   carrinhoId    String
   produtoId     String
-  quantidade    Int      @default(1)
-  precoUnitario Decimal  @db.Decimal(10, 2)
-  observacoes   String?
+  quantidade    Int
+  precoUnitario Float
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
 
   carrinho Carrinho @relation(fields: [carrinhoId], references: [id], onDelete: Cascade)
   produto  Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
@@ -183,36 +169,76 @@ model ItemPedido {
   pedidoId      String
   produtoId     String
   quantidade    Int
-  precoUnitario Decimal  @db.Decimal(10, 2)
-  subtotal      Decimal  @db.Decimal(10, 2)
-  observacoes   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  precoUnitario Float
+  subtotal      Float
 
   pedido  Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@index([pedidoId])
   @@index([produtoId])
-  @@index([pedidoId, produtoId])
   @@map("itens_pedido")
 }
 
+model Endereco {
+  id          String  @id @default(uuid())
+  rua         String
+  numero      String
+  complemento String?
+  bairro      String
+  cidade      String
+  estado      String
+  cep         String
+  usuarioId   String  @unique
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("enderecos")
+}
+
+model Pagamento {
+  id            String   @id @default(uuid())
+  pedidoId      String
+  empresaId     String
+  valor         Float
+  metodo        String   // PIX, CARTAO, DINHEIRO
+  status        String   @default("PENDENTE") // PENDENTE, APROVADO, RECUSADO
+  transacaoId   String?  // ID da transação no gateway
+  asaasPaymentId String? // ID do pagamento no Asaas
+  asaasInvoiceUrl String? // URL da fatura no Asaas
+  pixQrCode     String?  // QR Code PIX
+  pixCopyPaste  String?  // Código PIX copia e cola
+  boletoUrl     String?  // URL do boleto
+  dataVencimento DateTime? // Data de vencimento
+  dataPagamento DateTime? // Data do pagamento
+  gatewayResposta String?  // Resposta completa do gateway (JSON como string)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pedido Pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+  @@index([empresaId])
+  @@index([status])
+  @@map("pagamentos")
+}
+
 model Cupom {
-  id          String   @id @default(uuid())
-  codigo      String
-  descricao   String?
-  tipo        String   // PERCENTUAL, VALOR_FIXO
-  valor       Decimal  @db.Decimal(10, 2)
-  valorMinimo Decimal? @map("valor_minimo") @db.Decimal(10, 2)
-  dataInicio  DateTime @map("data_inicio")
-  dataFim     DateTime @map("data_fim")
-  ativo       Boolean  @default(true)
-  usoMaximo   Int?     @map("uso_maximo")
-  usoAtual    Int      @default(0) @map("uso_atual")
-  empresaId   String   @map("empresa_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String    @id @default(uuid())
+  codigo       String    @map("codigo")
+  descricao    String    @map("descricao")
+  tipo         String    @map("tipo") // PERCENTUAL, VALOR_FIXO
+  valor        Float   @map("valor")
+  valorMinimo  Float?  @map("valor_minimo")
+  dataInicio   DateTime  @map("data_inicio")
+  dataFim      DateTime  @map("data_fim")
+  ativo        Boolean   @default(true) @map("ativo")
+  usoMaximo    Int?      @map("uso_maximo")
+  usoAtual     Int       @default(0) @map("uso_atual")
+  empresaId    String    @map("empresa_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
@@ -260,65 +286,14 @@ model Notificacao {
   @@map("notificacoes")
 }
 
-model Assinatura {
-  id                   String    @id @default(uuid())
-  empresaId            String    @unique @map("empresa_id")
-  empresa              Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  plano                String    // BASICO, PROFISSIONAL, ENTERPRISE
-  status               String    // ATIVA, CANCELADA, SUSPENSA, TRIAL
-  stripeCustomerId     String?   @map("stripe_customer_id")
-  stripeSubscriptionId String?   @map("stripe_subscription_id")
-  dataInicio           DateTime  @map("data_inicio")
-  dataFim              DateTime? @map("data_fim")
-  valorMensal          Float     @map("valor_mensal")
-  proximaCobranca      DateTime? @map("proxima_cobranca")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
-
-  pagamentos Pagamento[]
-
-  @@index([empresaId])
-  @@index([status])
-  @@map("assinaturas")
-}
-
-model Pagamento {
-  id              String       @id @default(uuid())
-  empresaId       String       @map("empresa_id")
-  empresa         Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  assinaturaId    String?      @map("assinatura_id")
-  assinatura      Assinatura?  @relation(fields: [assinaturaId], references: [id], onDelete: SetNull)
-  pedidoId        String?      @map("pedido_id")
-  pedido          Pedido?      @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
-  tipo            String       // ASSINATURA, PEDIDO
-  metodo          String       // PIX, CARTAO, BOLETO
-  status          String       // PENDENTE, APROVADO, RECUSADO, CANCELADO
-  valor           Float
-  asaasPaymentId  String?      @map("asaas_payment_id")
-  asaasInvoiceUrl String?      @map("asaas_invoice_url")
-  pixQrCode       String?      @map("pix_qr_code")
-  pixCopyPaste    String?      @map("pix_copy_paste")
-  boletoUrl       String?      @map("boleto_url")
-  dataVencimento  DateTime?    @map("data_vencimento")
-  dataPagamento   DateTime?    @map("data_pagamento")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-
-  @@index([empresaId])
-  @@index([assinaturaId])
-  @@index([pedidoId])
-  @@index([status])
-  @@map("pagamentos")
-}
-
 model WebhookLog {
   id         String   @id @default(uuid())
   origem     String   // STRIPE, ASAAS
   evento     String
-  payload    Json
+  payload    String  // JSON como string
   processado Boolean  @default(false)
   erro       String?
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt  DateTime @default(now())
 
   @@index([origem])
   @@index([processado])
@@ -326,40 +301,17 @@ model WebhookLog {
 }
 
 model MensagemWhatsApp {
-  id         String   @id @default(uuid())
-  empresaId  String   @map("empresa_id")
-  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  pedidoId   String?  @map("pedido_id")
-  pedido     Pedido?  @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
-  telefone   String
-  mensagem   String
-  tipo       String   // NOTIFICACAO, CHAT
-  direcao    String   // ENVIADA, RECEBIDA
-  status     String   // PENDENTE, ENVIADA, ENTREGUE, LIDA, ERRO
-  whatsappId String?  @map("whatsapp_id")
-  erro       String?
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  pedidoId  String   @map("pedido_id")
+  telefone  String
+  mensagem  String
+  status    String   @default("PENDENTE") // PENDENTE, ENVIADO, FALHOU
+  erro      String?
+  createdAt DateTime @default(now()) @map("created_at")
 
-  @@index([empresaId])
+  pedido Pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
   @@index([pedidoId])
   @@index([status])
   @@map("mensagens_whatsapp")
-}
-
-model Endereco {
-  id          String   @id @default(uuid())
-  usuarioId   String   @unique @map("usuario_id")
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  cep         String?
-  rua         String?
-  numero      String?
-  complemento String?
-  bairro      String?
-  cidade      String?
-  uf          String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@index([usuarioId])
-  @@map("enderecos")
 }

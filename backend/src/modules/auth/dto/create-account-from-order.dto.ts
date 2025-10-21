@@ -1,39 +1,20 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
 
 export class CreateAccountFromOrderDto {
-  @IsNotEmpty()
-  @IsString()
+  @IsString({ message: 'Nome deve ser uma string' })
   nome: string;
 
-  @IsNotEmpty()
-  @IsEmail()
+  @IsEmail({}, { message: 'Email deve ter um formato válido' })
   email: string;
 
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(6)
+  @IsString({ message: 'Senha deve ser uma string' })
+  @MinLength(6, { message: 'Senha deve ter pelo menos 6 caracteres' })
   senha: string;
 
-  @IsNotEmpty()
-  @IsString()
-  telefone: string;
+  @IsString({ message: 'ID do pedido deve ser uma string' })
+  pedidoId: string;
 
   @IsOptional()
-  @IsString()
-  cpf?: string;
-
-  @IsNotEmpty()
-  @IsString()
-  empresaId: string;
-
-  @IsOptional()
-  endereco?: {
-    cep?: string;
-    rua?: string;
-    numero?: string;
-    complemento?: string;
-    bairro?: string;
-    cidade?: string;
-    uf?: string;
-  };
+  @IsString({ message: 'Telefone deve ser uma string' })
+  telefone?: string;
 }

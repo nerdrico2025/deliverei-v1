@@ -1,35 +1,57 @@
-import React from "react";
+import { ReactNode } from 'react';
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "sm" | "md" | "lg";
+interface ButtonProps {
+  children: ReactNode;
+  onClick?: () => void;
+  variant?: 'primary' | 'secondary' | 'outline';
+  size?: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
+  loading?: boolean;
+  type?: 'button' | 'submit' | 'reset';
+  className?: string;
+}
 
-export const Button: React.FC<
-  React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    variant?: Variant;
-    size?: Size;
-    loading?: boolean;
-  }
-> = ({ variant = "primary", size = "md", loading, children, className = "", ...props }) => {
-  const base = "inline-flex items-center justify-center rounded-md font-semibold transition focus:outline-none focus:ring-2";
-  const sizes = {
-    sm: "h-9 px-3 text-sm",
-    md: "h-10 px-4 text-sm",
-    lg: "h-11 px-5 text-base",
-  }[size];
-  const variants = {
-    primary: "bg-[#D22630] text-white hover:bg-[#B31E27] focus:ring-[#D22630]/30",
-    secondary: "bg-[#FFC107] text-[#1F2937] hover:bg-[#E0A806] focus:ring-[#FFC107]/30",
-    ghost: "bg-transparent text-[#D22630] hover:bg-[#D22630]/10 focus:ring-[#D22630]/20",
-    danger: "bg-[#DC2626] text-white hover:bg-[#B91C1C] focus:ring-[#DC2626]/30",
-  }[variant];
+export const Button = ({
+  children,
+  onClick,
+  variant = 'primary',
+  size = 'md',
+  disabled = false,
+  loading = false,
+  type = 'button',
+  className = '',
+}: ButtonProps) => {
+  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+  
+  const variantClasses = {
+    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
+    secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
+    outline: 'border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-blue-500',
+  };
+
+  const sizeClasses = {
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-4 py-2 text-sm',
+    lg: 'px-6 py-3 text-base',
+  };
+
+  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
 
   return (
     <button
-      className={`${base} ${sizes} ${variants} ${className}`}
-      disabled={loading || props.disabled}
-      {...props}
+      type={type}
+      onClick={onClick}
+      disabled={disabled || loading}
+      className={classes}
     >
-      {loading ? "Carregando..." : children}
+      {loading ? (
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </button>
   );
 };

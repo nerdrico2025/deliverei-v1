@@ -1,67 +1,73 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { safeStorage } from "../utils/safeStorage";
+import { useState, useCallback } from 'react';
 
-export type CartItem = { id: string; title: string; price: number; qty: number };
-
-const CART_KEY = "deliverei:cart:v1";
-const LAST_ADDED_KEY = "deliverei:lastAddedId:v1";
-
-function parseJSON<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
 }
 
-export function useCart() {
-  const [items, setItems] = useState<CartItem[]>(() =>
-    parseJSON<CartItem[]>(safeStorage.get(CART_KEY), [])
-  );
+interface UseCartReturn {
+  items: CartItem[];
+  addItem: (product: Omit<CartItem, 'quantity'>) => void;
+  removeItem: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
+  clearCart: () => void;
+  totalItems: number;
+  totalPrice: number;
+}
 
-  const [lastAddedId, setLastAddedId] = useState<string | undefined>(() => {
-    const v = safeStorage.get(LAST_ADDED_KEY);
-    return v || undefined;
-  });
+export const useCart = (): UseCartReturn => {
+  const [items, setItems] = useState<CartItem[]>([]);
 
-  useEffect(() => {
-    safeStorage.set(CART_KEY, JSON.stringify(items));
-  }, [items]);
-
-  useEffect(() => {
-    if (lastAddedId) safeStorage.set(LAST_ADDED_KEY, lastAddedId);
-    else safeStorage.remove(LAST_ADDED_KEY);
-  }, [lastAddedId]);
-
-  const add = useCallback((item: Omit<CartItem, "qty">, qty = 1) => {
-    setItems((curr) => {
-      const ex = curr.find((c) => c.id === item.id);
-      if (ex) return curr.map((c) => (c.id === item.id ? { ...c, qty: c.qty + qty } : c));
-      return [...curr, { ...item, qty }];
+  const addItem = useCallback((product: Omit<CartItem, 'quantity'>) => {
+    setItems((currentItems: CartItem[]) => {
+      const existingItem = currentItems.find((item: CartItem) => item.id === product.id);
+      
+      if (existingItem) {
+        return currentItems.map((item: CartItem) =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      
+      return [...currentItems, { ...product, quantity: 1 }];
     });
-    setLastAddedId(item.id);
   }, []);
 
-  const updateQty = useCallback((id: string, qty: number) => {
-    setItems((curr) =>
-      curr
-        .map((c) => (c.id === id ? { ...c, qty } : c))
-        .filter((c) => c.qty > 0)
+  const removeItem = useCallback((id: string) => {
+    setItems((currentItems: CartItem[]) => currentItems.filter((item: CartItem) => item.id !== id));
+  }, []);
+
+  const updateQuantity = useCallback((id: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeItem(id);
+      return;
+    }
+    
+    setItems((currentItems: CartItem[]) =>
+      currentItems.map((item: CartItem) =>
+        item.id === id ? { ...item, quantity } : item
+      )
     );
-  }, []);
+  }, [removeItem]);
 
-  const remove = useCallback((id: string) => {
-    setItems((curr) => curr.filter((c) => c.id !== id));
-  }, []);
-
-  const clear = useCallback(() => {
+  const clearCart = useCallback(() => {
     setItems([]);
-    setLastAddedId(undefined);
   }, []);
 
-  const count = useMemo(() => items.reduce((s, i) => s + i.qty, 0), [items]);
-  const subtotal = useMemo(() => items.reduce((s, i) => s + i.price * i.qty, 0), [items]);
+  const totalItems = items.reduce((total: number, item: CartItem) => total + item.quantity, 0);
+  const totalPrice = items.reduce((total: number, item: CartItem) => total + (item.price * item.quantity), 0);
 
-  return { items, add, updateQty, remove, clear, count, subtotal, lastAddedId, setLastAddedId };
-}
+  return {
+    items,
+    addItem,
+    removeItem,
+    updateQuantity,
+    clearCart,
+    totalItems,
+    totalPrice,
+  };
+};

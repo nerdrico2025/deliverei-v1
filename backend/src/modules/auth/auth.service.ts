@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { LoginDto, SignupDto, CreateAccountFromOrderDto } from './dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -50,7 +50,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: usuario.id,
       email: usuario.email,
-      role: usuario.role,
+      role: usuario.tipo,
       empresaId: usuario.empresaId,
     };
 
@@ -106,7 +106,7 @@ export class AuthService {
         senha: hashedPassword,
         nome: signupDto.nome,
         empresaId: signupDto.empresaId,
-        role: signupDto.empresaId ? 'CLIENTE' : 'SUPER_ADMIN',
+        tipo: signupDto.empresaId ? 'CLIENTE' : 'SUPER_ADMIN',
       },
       include: { empresa: true },
     });
@@ -114,7 +114,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: usuario.id,
       email: usuario.email,
-      role: usuario.role,
+      role: usuario.tipo,
       empresaId: usuario.empresaId,
     };
 
@@ -128,7 +128,7 @@ export class AuthService {
         id: usuario.id,
         email: usuario.email,
         nome: usuario.nome,
-        role: usuario.role,
+        tipo: usuario.tipo,
         empresaId: usuario.empresaId,
         empresa: usuario.empresa,
       },
@@ -162,7 +162,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: usuario.id,
       email: usuario.email,
-      role: usuario.role,
+      role: usuario.tipo,
       empresaId: usuario.empresaId,
     };
 
@@ -214,19 +214,6 @@ export class AuthService {
       throw new ConflictException('Email já cadastrado');
     }
 
-    // Verificar se empresa existe
-    const empresa = await this.prisma.empresa.findUnique({
-      where: { id: createAccountDto.empresaId },
-    });
-
-    if (!empresa) {
-      throw new BadRequestException('Empresa não encontrada');
-    }
-
-    if (!empresa.ativo) {
-      throw new BadRequestException('Empresa inativa');
-    }
-
     // Hash da senha
     const hashedPassword = await bcrypt.hash(createAccountDto.senha, 10);
 
@@ -237,22 +224,7 @@ export class AuthService {
         senha: hashedPassword,
         nome: createAccountDto.nome,
         telefone: createAccountDto.telefone,
-        cpf: createAccountDto.cpf,
-        empresaId: createAccountDto.empresaId,
-        role: 'CLIENTE',
-        ...(createAccountDto.endereco && {
-          endereco: {
-            create: {
-              cep: createAccountDto.endereco.cep,
-              rua: createAccountDto.endereco.rua,
-              numero: createAccountDto.endereco.numero,
-              complemento: createAccountDto.endereco.complemento,
-              bairro: createAccountDto.endereco.bairro,
-              cidade: createAccountDto.endereco.cidade,
-              uf: createAccountDto.endereco.uf,
-            },
-          },
-        }),
+        tipo: 'CLIENTE',
       },
       include: { empresa: true, endereco: true },
     });
@@ -260,7 +232,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: usuario.id,
       email: usuario.email,
-      role: usuario.role,
+      role: usuario.tipo,
       empresaId: usuario.empresaId,
     };
 
@@ -275,11 +247,7 @@ export class AuthService {
         email: usuario.email,
         nome: usuario.nome,
         telefone: usuario.telefone,
-        cpf: usuario.cpf,
-        role: usuario.role,
-        empresaId: usuario.empresaId,
-        empresa: usuario.empresa,
-        endereco: usuario.endereco,
+        tipo: usuario.tipo,
       },
     };
   }

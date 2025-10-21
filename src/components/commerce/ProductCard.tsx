@@ -1,42 +1,63 @@
-import React from "react";
-import { Button } from "../common/Button";
-import { Badge } from "../common/Badge";
-import { formatCurrency } from "../../utils/formatters";
+import { Button } from '../common/Button';
 
-type Product = {
+interface Product {
   id: string;
-  title: string;
+  name: string;
   price: number;
-  image: string;
-  lowStock?: boolean;
-  outOfStock?: boolean;
-};
+  image?: string;
+  description?: string;
+}
 
-export const ProductCard: React.FC<{
+interface ProductCardProps {
   product: Product;
-  onAdd: (id: string) => void;
-}> = ({ product, onAdd }) => (
-  <div className="overflow-hidden rounded-md border border-[#E5E7EB] bg-white shadow-sm hover:shadow-md transition-shadow">
-    <div className="relative">
-      <img src={product.image} alt={product.title} className="h-48 w-full object-cover" />
-      <div className="absolute left-2 top-2 space-y-1">
-        {product.outOfStock && <Badge tone="muted">ESGOTADO</Badge>}
-        {product.lowStock && !product.outOfStock && (
-          <Badge tone="warning">ÚLTIMAS UNIDADES</Badge>
+  onAddToCart: (product: Product) => void;
+}
+
+export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(price);
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200">
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.name}
+            className="h-48 w-full object-cover object-center"
+          />
+        ) : (
+          <div className="h-48 w-full bg-gray-200 flex items-center justify-center">
+            <span className="text-gray-400">Sem imagem</span>
+          </div>
         )}
       </div>
+      
+      <div className="p-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{product.name}</h3>
+        
+        {product.description && (
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+        )}
+        
+        <div className="flex items-center justify-between">
+          <span className="text-xl font-bold text-gray-900">
+            {formatPrice(product.price)}
+          </span>
+          
+          <Button
+            onClick={() => onAddToCart(product)}
+            variant="primary"
+            size="sm"
+          >
+            Adicionar
+          </Button>
+        </div>
+      </div>
     </div>
-    <div className="p-3">
-      <div className="mb-2 line-clamp-1 font-semibold text-[#1F2937]">{product.title}</div>
-      <div className="mb-3 text-lg font-bold text-[#1F2937]">{formatCurrency(product.price)}</div>
-      <Button
-        variant="primary"
-        disabled={product.outOfStock}
-        onClick={() => onAdd(product.id)}
-        className="w-full"
-      >
-        Adicionar
-      </Button>
-    </div>
-  </div>
-);
+  );
+};

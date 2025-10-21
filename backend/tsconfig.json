@@ -17,8 +17,12 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    "lib": ["ES2021"],
+    "types": ["node"],
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "include": ["src", "prisma"],
+  "exclude": ["node_modules", "dist", "../src", "../**"]
 }

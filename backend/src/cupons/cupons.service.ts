@@ -25,7 +25,15 @@ export class CuponsService {
 
     return this.prisma.cupom.create({
       data: {
-        ...createCupomDto,
+        codigo: createCupomDto.codigo,
+        descricao: createCupomDto.descricao,
+        tipo: createCupomDto.tipo,
+        valor: createCupomDto.valor,
+        valorMinimo: createCupomDto.valorMinimo,
+        dataInicio: new Date(createCupomDto.dataInicio),
+        dataFim: new Date(createCupomDto.dataFim),
+        ativo: createCupomDto.ativo ?? true,
+        usoMaximo: createCupomDto.usoMaximo,
         empresaId,
       },
     });

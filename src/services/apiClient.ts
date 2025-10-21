@@ -1,133 +1,56 @@
-/**
- * API Client
- * 
- * Axios instance with interceptors for authentication and error handling
- * 
- * @refactored Phase 2 - Improved interceptors and error handling
- */
+import axios from 'axios';
 
-import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+// Base URL do backend - usando variável de ambiente ou fallback
+const baseURL = process.env.VITE_API_URL || 'http://localhost:3001/api';
 
-// Base API URL from environment variables with fallback
-const API_URL = import.meta.env.VITE_API_URL || 'https://deliverei-backend.onrender.com/api';
-
-// Storage keys
-const STORAGE_KEYS = {
-  TOKEN: 'deliverei_token',
-  REFRESH_TOKEN: 'deliverei_refresh_token',
-  TENANT_SLUG: 'deliverei_tenant_slug',
-  AUTH: 'deliverei_auth',
-} as const;
-
-/**
- * Create axios instance with default configuration
- */
+// Criar instância do axios
 const apiClient = axios.create({
-  baseURL: API_URL,
-  timeout: 30000, // 30 seconds
+  baseURL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-/**
- * Request Interceptor
- * 
- * Adds authentication token and tenant slug to all requests
- */
+// Interceptor para adicionar token de autenticação
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-    const tenantSlug = localStorage.getItem(STORAGE_KEYS.TENANT_SLUG);
-
+  (config) => {
+    // Adicionar token se existir
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Adicionar slug da empresa se existir
+    const tenantSlug = localStorage.getItem('tenantSlug');
     if (tenantSlug) {
-      config.headers['x-tenant-slug'] = tenantSlug;
+      config.headers['X-Tenant-Slug'] = tenantSlug;
     }
 
     return config;
   },
   (error) => {
-    return Promise.reject(error);
+    throw error;
   }
 );
 
-/**
- * Response Interceptor
- * 
- * Handles token refresh and error responses
- */
+// Interceptor para tratar respostas
 apiClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-
-    // Handle 401 Unauthorized - attempt token refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_URL}/auth/refresh`, {
-            refreshToken,
-          });
-
-          // Update stored token
-          localStorage.setItem(STORAGE_KEYS.TOKEN, data.accessToken);
-
-          // Update request header
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
-          }
-
-          // Retry original request
-          return apiClient.request(originalRequest);
-        } catch (refreshError) {
-          // Refresh failed - clear auth and redirect to login
-          clearAuthData();
-          redirectToLogin();
-          return Promise.reject(refreshError);
-        }
-      } else {
-        // No refresh token - clear auth and redirect
-        clearAuthData();
-        redirectToLogin();
-      }
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Se receber 401, redirecionar para login
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('tenantSlug');
+      window.location.href = '/login';
     }
-
-    // Handle other errors
-    return Promise.reject(error);
+    
+    throw error;
   }
 );
 
-/**
- * Clear authentication data from localStorage
- */
-function clearAuthData(): void {
-  Object.values(STORAGE_KEYS).forEach((key) => {
-    localStorage.removeItem(key);
-  });
-}
-
-/**
- * Redirect to login page
- */
-function redirectToLogin(): void {
-  // Only redirect if not already on login page
-  if (!window.location.pathname.includes('/login')) {
-    window.location.href = '/login';
-  }
-}
-
-/**
- * Export API client instance
- */
+export { apiClient };
 export default apiClient;
-
-/**
- * Export utility functions for external use
- */
-export { clearAuthData, redirectToLogin, STORAGE_KEYS, API_URL };

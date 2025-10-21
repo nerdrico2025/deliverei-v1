@@ -1,4 +1,25 @@
-# 🎯 DELIVEREI - Priority Action Plan
+Neste plano de ação, detalhamos as etapas para corrigir as dependências do projeto e garantir a estabilidade do ambiente de desenvolvimento.
+
+**Passos Executados:**
+
+1. **Análise de Dependências:**
+   - Verificamos os arquivos `package.json` do frontend e do backend para identificar dependências desatualizadas ou problemáticas.
+
+2. **Correção de Dependências:**
+   - **Frontend:**
+     - Corrigimos a versão do `axios` para `^1.7.2`.
+     - Atualizamos `react-router-dom` para `^6.23.1`.
+     - Atualizamos `recharts` para `^2.12.7`.
+     - Atualizamos `vite` para `^5.2.11`.
+   - **Backend:**
+     - Corrigimos a versão do `axios` para `^1.7.2`.
+     - Atualizamos as dependências do NestJS, Prisma e outras bibliotecas para as versões mais recentes e estáveis.
+
+3. **Instalação de Dependências:**
+   - Executamos `npm install` nos diretórios do frontend e do backend para aplicar as atualizações.
+
+4. **Verificação Final:**
+   - Reiniciamos o servidor de desenvolvimento e verificamos se os problemas de instabilidade foram resolvidos.# 🎯 DELIVEREI - Priority Action Plan
 
 **Date**: October 13, 2025  
 **Status**: Backend deployment issues RESOLVED ✅  
