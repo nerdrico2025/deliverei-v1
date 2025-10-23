@@ -1,0 +1,41 @@
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { ConfigService } from '@nestjs/config';
+import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import { PrismaService } from '../../../database/prisma.service';
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private configService: ConfigService,
+  ) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: configService.get<string>('JWT_SECRET'),
+    });
+  }
+
+  async validate(payload: JwtPayload) {
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: payload.sub },
+      include: { empresa: true },
+    });
+
+    if (!usuario || !usuario.ativo) {
+      throw new UnauthorizedException('Usuário inválido ou inativo');
+    }
+
+    return {
+      sub: usuario.id, // Adicionar sub para compatibilidade com controllers
+      id: usuario.id,
+      email: usuario.email,
+      nome: usuario.nome,
+      role: usuario.tipo,
+      empresaId: usuario.empresaId,
+      empresa: usuario.empresa,
+    };
+  }
+}

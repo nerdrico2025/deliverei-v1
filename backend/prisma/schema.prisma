@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums convertidos para strings para compatibilidade com SQLite
+// StatusPedido: PENDENTE, CONFIRMADO, EM_PREPARO, SAIU_ENTREGA, ENTREGUE, CANCELADO
+// TipoUsuario: CLIENTE, ADMIN_EMPRESA, SUPER_ADMIN
+
+model Empresa {
+  id          String   @id @default(uuid())
+  nome        String
+  email       String   @unique
+  telefone    String?
+  endereco    String?
+  ativo       Boolean  @default(true)
+  slug        String?  @unique
+  subdominio  String?  @unique
+  ativa       Boolean  @default(true)
+  asaasCustomerId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  usuarios  Usuario[]
+  produtos  Produto[]
+  pedidos   Pedido[]
+  carrinhos Carrinho[]
+  cupons    Cupom[]
+  pagamentos Pagamento[]
+
+  @@map("empresas")
+}
+
+model Usuario {
+  id        String      @id @default(uuid())
+  nome      String
+  email     String      @unique
+  senha     String
+  telefone  String?
+  tipo      String @default("CLIENTE")
+  ativo     Boolean     @default(true)
+  empresaId String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  empresa      Empresa?       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  pedidos      Pedido[]
+  carrinho     Carrinho?
+  avaliacoes   Avaliacao[]
+  notificacoes Notificacao[]
+  endereco     Endereco?
+
+  @@index([empresaId])
+  @@map("usuarios")
+}
+
+model Produto {
+  id        String   @id @default(uuid())
+  nome      String
+  descricao String?
+  preco     Float
+  imagem    String?
+  ativo     Boolean  @default(true)
+  empresaId String
+  estoque   Int      @default(0)
+  categoria String?
+  promo_tag Boolean @default(false)
+  bestseller_tag Boolean @default(false)
+  new_tag Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  empresa       Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itensCarrinho ItemCarrinho[]
+  itensPedido   ItemPedido[]
+  avaliacoes    Avaliacao[]
+
+  @@index([empresaId])
+  @@index([ativo])
+  @@index([empresaId, ativo])
+  @@index([empresaId, categoria])
+  @@map("produtos")
+}
+
+model Pedido {
+  id               String        @id @default(uuid())
+  numero           String        @unique
+  status           String  @default("PENDENTE")
+  subtotal         Float
+  desconto         Float         @default(0)
+  total            Float
+  frete            Float         @default(0)
+  clienteId        String
+  empresaId        String
+  enderecoEntrega  String?
+  formaPagamento   String?
+  cupomDesconto    String?
+  observacoes      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  cliente           Usuario            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  empresa           Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itens             ItemPedido[]
+  avaliacoes        Avaliacao[]
+  notificacoes      Notificacao[]
+  pagamentos        Pagamento[]
+  mensagensWhatsApp MensagemWhatsApp[]
+
+  @@index([clienteId])
+  @@index([empresaId])
+  @@index([status])
+  @@index([empresaId, createdAt])
+  @@index([empresaId, status])
+  @@index([createdAt])
+  @@map("pedidos")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  usuarioId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model Carrinho {
+  id        String   @id @default(uuid())
+  usuarioId String   @unique
+  empresaId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuario Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  itens   ItemCarrinho[]
+
+  @@index([usuarioId])
+  @@index([empresaId])
+  @@map("carrinhos")
+}
+
+model ItemCarrinho {
+  id            String   @id @default(uuid())
+  carrinhoId    String
+  produtoId     String
+  quantidade    Int
+  precoUnitario Float
+  createdAt     DateTime @default(now())
+
+  carrinho Carrinho @relation(fields: [carrinhoId], references: [id], onDelete: Cascade)
+  produto  Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@index([carrinhoId])
+  @@index([produtoId])
+  @@map("itens_carrinho")
+}
+
+model ItemPedido {
+  id            String   @id @default(uuid())
+  pedidoId      String
+  produtoId     String
+  quantidade    Int
+  precoUnitario Float
+  subtotal      Float
+
+  pedido  Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+  @@index([produtoId])
+  @@map("itens_pedido")
+}
+
+model Endereco {
+  id          String  @id @default(uuid())
+  rua         String
+  numero      String
+  complemento String?
+  bairro      String
+  cidade      String
+  estado      String
+  cep         String
+  usuarioId   String  @unique
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("enderecos")
+}
+
+model Pagamento {
+  id            String   @id @default(uuid())
+  pedidoId      String
+  empresaId     String
+  valor         Float
+  metodo        String   // PIX, CARTAO, DINHEIRO
+  status        String   @default("PENDENTE") // PENDENTE, APROVADO, RECUSADO
+  transacaoId   String?  // ID da transação no gateway
+  asaasPaymentId String? // ID do pagamento no Asaas
+  asaasInvoiceUrl String? // URL da fatura no Asaas
+  pixQrCode     String?  // QR Code PIX
+  pixCopyPaste  String?  // Código PIX copia e cola
+  boletoUrl     String?  // URL do boleto
+  dataVencimento DateTime? // Data de vencimento
+  dataPagamento DateTime? // Data do pagamento
+  gatewayResposta String?  // Resposta completa do gateway (JSON como string)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  pedido Pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+  @@index([empresaId])
+  @@index([status])
+  @@map("pagamentos")
+}
+
+model Cupom {
+  id           String    @id @default(uuid())
+  codigo       String    @map("codigo")
+  descricao    String    @map("descricao")
+  tipo         String    @map("tipo") // PERCENTUAL, VALOR_FIXO
+  valor        Float   @map("valor")
+  valorMinimo  Float?  @map("valor_minimo")
+  dataInicio   DateTime  @map("data_inicio")
+  dataFim      DateTime  @map("data_fim")
+  ativo        Boolean   @default(true) @map("ativo")
+  usoMaximo    Int?      @map("uso_maximo")
+  usoAtual     Int       @default(0) @map("uso_atual")
+  empresaId    String    @map("empresa_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@unique([empresaId, codigo])
+  @@index([empresaId])
+  @@index([empresaId, ativo])
+  @@map("cupons")
+}
+
+model Avaliacao {
+  id         String   @id @default(uuid())
+  nota       Int      // 1-5
+  comentario String?
+  produtoId  String   @map("produto_id")
+  usuarioId  String   @map("usuario_id")
+  pedidoId   String?  @map("pedido_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  produto Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  usuario Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  pedido  Pedido?  @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+
+  @@index([produtoId])
+  @@index([usuarioId])
+  @@index([pedidoId])
+  @@map("avaliacoes")
+}
+
+model Notificacao {
+  id        String   @id @default(uuid())
+  titulo    String
+  mensagem  String
+  tipo      String   // PEDIDO, SISTEMA, PROMOCAO
+  lida      Boolean  @default(false)
+  usuarioId String   @map("usuario_id")
+  pedidoId  String?  @map("pedido_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  pedido  Pedido? @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@index([pedidoId])
+  @@index([usuarioId, lida])
+  @@map("notificacoes")
+}
+
+model WebhookLog {
+  id         String   @id @default(uuid())
+  origem     String   // STRIPE, ASAAS
+  evento     String
+  payload    String  // JSON como string
+  processado Boolean  @default(false)
+  erro       String?
+  createdAt  DateTime @default(now())
+
+  @@index([origem])
+  @@index([processado])
+  @@map("webhook_logs")
+}
+
+model MensagemWhatsApp {
+  id        String   @id @default(uuid())
+  pedidoId  String   @map("pedido_id")
+  telefone  String
+  mensagem  String
+  status    String   @default("PENDENTE") // PENDENTE, ENVIADO, FALHOU
+  erro      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pedido Pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+  @@index([status])
+  @@map("mensagens_whatsapp")
+}
