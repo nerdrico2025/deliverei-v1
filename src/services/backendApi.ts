@@ -537,6 +537,43 @@ const storefrontApi = {
 export interface DomainInfo { slug: string; customDomain?: string | null; redirectEnabled?: boolean }
 export interface DomainAvailability { available: boolean }
 
+const avaliacoesApi = {
+  minhasAvaliacoes: async (): Promise<Avaliacao[]> => {
+    try {
+      const response = await apiClient.get<Avaliacao[]>('/avaliacoes/minhas');
+      return Array.isArray(response.data) ? response.data : [];
+    } catch {
+      return [];
+    }
+  },
+  deletar: async (id: string): Promise<void> => {
+    try {
+      await apiClient.delete(`/avaliacoes/${id}`);
+    } catch {}
+  },
+};
+
+const notificacoesApi = {
+  listar: async (): Promise<Notificacao[]> => {
+    const response = await apiClient.get<any>('/notificacoes');
+    const data = response.data;
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.notificacoes)) return data.notificacoes;
+    return [];
+  },
+  marcarLida: async (_id: string): Promise<void> => {
+    try {
+      await apiClient.put('/notificacoes/marcar-todas-lidas');
+    } catch {}
+  },
+  marcarTodasLidas: async (): Promise<void> => {
+    await apiClient.put('/notificacoes/marcar-todas-lidas');
+  },
+  deletar: async (_id: string): Promise<void> => {
+    // Sem endpoint no mock, operação otimista local
+    return;
+  },
+};
 
 const domainApi = {
   getCurrent: async (): Promise<DomainInfo> => {
@@ -576,41 +613,3 @@ export const backendApi = {
 
 // Export individual APIs for direct imports
 export { carrinhoApi, authApi, produtosApi, cuponsApi, avaliacoesApi, notificacoesApi, pedidosApi, dashboardApi, assinaturasApi, pagamentosApi, whatsappApi, webhooksApi, storefrontApi, domainApi };
-
-const avaliacoesApi = {
-  minhasAvaliacoes: async (): Promise<Avaliacao[]> => {
-    try {
-      const response = await apiClient.get<Avaliacao[]>('/avaliacoes/minhas');
-      return Array.isArray(response.data) ? response.data : [];
-    } catch {
-      return [];
-    }
-  },
-  deletar: async (id: string): Promise<void> => {
-    try {
-      await apiClient.delete(`/avaliacoes/${id}`);
-    } catch {}
-  },
-};
-
-const notificacoesApi = {
-  listar: async (): Promise<Notificacao[]> => {
-    const response = await apiClient.get<any>('/notificacoes');
-    const data = response.data;
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.notificacoes)) return data.notificacoes;
-    return [];
-  },
-  marcarLida: async (_id: string): Promise<void> => {
-    try {
-      await apiClient.put('/notificacoes/marcar-todas-lidas');
-    } catch {}
-  },
-  marcarTodasLidas: async (): Promise<void> => {
-    await apiClient.put('/notificacoes/marcar-todas-lidas');
-  },
-  deletar: async (_id: string): Promise<void> => {
-    // Sem endpoint no mock, operação otimista local
-    return;
-  },
-};
