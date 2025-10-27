@@ -11,94 +11,52 @@ import DateRangeFilter, { DateRange, calculateDateRange } from "../../../compone
 import SalesChart from "../../../components/dashboard/SalesChart";
 import { dashboardApi, SalesDataPoint } from "../../../services/dashboardApi";
 import { formatCurrency } from "../../../utils/formatters";
+import { resolveTenantSlug } from "../../../services/api.utils";
+import { pedidosApi } from "../../../services/backendApi";
+import { getProducts } from "../../../services/productsApi";
 
-const getStoreSlug = () => (localStorage.getItem("deliverei_store_slug") || "minha-loja").trim();
-const getStoreUrl = () => `${window.location.origin}/loja/${getStoreSlug()}`;
+const getStoreSlug = () => {
+  try {
+    const fromStorage = localStorage.getItem("deliverei_tenant_slug") || localStorage.getItem("deliverei_store_slug");
+    return (fromStorage || resolveTenantSlug() || "minha-loja").trim();
+  } catch {
+    return "minha-loja";
+  }
+};
 
-// Mock data types
-type Order = {
+const getPublicOrigin = () => {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const isLocal = /localhost|127\.|0\.0\.0\.0/.test(origin);
+  const envDomain = (import.meta as any)?.env?.VITE_PUBLIC_APP_DOMAIN || "https://deliverei.com.br";
+  return isLocal ? envDomain : origin;
+};
+
+const getStoreUrl = (slug: string) => `${getPublicOrigin()}/loja/${slug}`;
+
+// Tipos de dados reais
+type RecentOrder = {
   id: string;
   cliente: string;
   total: number;
-  pagamento: string;
   status: string;
   criadoEm: string;
-  empresaId: string;
 };
-
-type Product = {
-  id: string;
-  title: string;
-  price: number;
-  stock: number;
-  status: string;
-  empresaId: string;
-};
-
-// Mock data with empresaId for data isolation
-const MOCK_ORDERS: Order[] = [
-  {
-    id: "1001",
-    cliente: "Maria Silva",
-    total: 72.3,
-    pagamento: "aprovado",
-    status: "recebido",
-    criadoEm: "2025-10-05 12:20",
-    empresaId: "pizza-express",
-  },
-  {
-    id: "1002",
-    cliente: "João Silva",
-    total: 79.8,
-    pagamento: "aprovado",
-    status: "em_preparo",
-    criadoEm: "2025-10-05 13:45",
-    empresaId: "pizza-express",
-  },
-  {
-    id: "1003",
-    cliente: "Ana Costa",
-    total: 45.0,
-    pagamento: "aprovado",
-    status: "saiu_entrega",
-    criadoEm: "2025-10-05 14:10",
-    empresaId: "pizza-express",
-  },
-  {
-    id: "2001",
-    cliente: "Carlos Mendes",
-    total: 89.9,
-    pagamento: "aprovado",
-    status: "recebido",
-    criadoEm: "2025-10-05 12:30",
-    empresaId: "burger-king",
-  },
-  {
-    id: "2002",
-    cliente: "Fernanda Lima",
-    total: 67.5,
-    pagamento: "aprovado",
-    status: "aprovado",
-    criadoEm: "2025-10-05 13:00",
-    empresaId: "burger-king",
-  },
-];
-
-const MOCK_PRODUCTS: Product[] = [
-  { id: "p1", title: "Pizza Margherita", price: 35.9, stock: 5, status: "ativo", empresaId: "pizza-express" },
-  { id: "p2", title: "Pizza Calabresa", price: 38.9, stock: 2, status: "ativo", empresaId: "pizza-express" },
-  { id: "p3", title: "Pizza Portuguesa", price: 42.9, stock: 8, status: "ativo", empresaId: "pizza-express" },
-  { id: "p4", title: "Whopper", price: 28.9, stock: 15, status: "ativo", empresaId: "burger-king" },
-  { id: "p5", title: "Big King", price: 32.9, stock: 1, status: "ativo", empresaId: "burger-king" },
-];
 
 export default function StoreDashboard() {
   const { user } = useAuth();
   const { push } = useToast();
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [companyOrders, setCompanyOrders] = useState<Order[]>([]);
-  const [companyProducts, setCompanyProducts] = useState<Product[]>([]);
-  const url = getStoreUrl();
+  const slug = user?.empresaId || getStoreSlug();
+  const url = getStoreUrl(slug);
+
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      push({ message: "Link copiado!", tone: "success" });
+    } catch {
+      push({ message: "Falha ao copiar link", tone: "danger" });
+    }
+  };
   
   // Date range filter state (default to last 7 days)
   const [dateRange, setDateRange] = useState<DateRange>(() => {
@@ -113,31 +71,20 @@ export default function StoreDashboard() {
   // Data states
   const [salesData, setSalesData] = useState<SalesDataPoint[]>([]);
   const [salesError, setSalesError] = useState<string | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<any | null>(null);
+  const [lowStockCount, setLowStockCount] = useState<number>(0);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
 
-  // Filter data by empresaId
-  useEffect(() => {
-    if (user?.empresaId) {
-      const filteredOrders = MOCK_ORDERS.filter(o => o.empresaId === user.empresaId);
-      const filteredProducts = MOCK_PRODUCTS.filter(p => p.empresaId === user.empresaId);
-      setCompanyOrders(filteredOrders);
-      setCompanyProducts(filteredProducts);
-    } else {
-      setCompanyOrders([]);
-      setCompanyProducts([]);
-    }
-  }, [user?.empresaId]);
-  
-  // Fetch all dashboard data when date range changes
+  // Fetch dashboard analytics and chart data
   useEffect(() => {
     const fetchAllData = async () => {
-      // Start loading for all sections
       setStatsLoading(true);
       setSalesLoading(true);
       setOrdersLoading(true);
       setSalesError(null);
-      
+
       try {
-        // Fetch sales chart data
+        // Sales chart for selected range
         const data = await dashboardApi.getGraficoVendasCustom(
           dateRange.startDate,
           dateRange.endDate
@@ -149,7 +96,50 @@ export default function StoreDashboard() {
         setSalesData([]);
       } finally {
         setSalesLoading(false);
+      }
+
+      try {
+        // Stats for selected range
+        const stats = await dashboardApi.getEstatisticas(dateRange.startDate, dateRange.endDate);
+        setDashboardStats(stats);
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        setDashboardStats(null);
+      } finally {
         setStatsLoading(false);
+      }
+
+      try {
+        // Low stock from products
+        const prods = await getProducts({ limit: 100 });
+        const low = (prods?.data || []).filter((p) => Number(p.estoque ?? 0) <= 3).length;
+        setLowStockCount(low);
+      } catch (error) {
+        setLowStockCount(0);
+      }
+
+      try {
+        // Recent orders (limit and then filter by date range)
+        const res = await pedidosApi.listar({ page: 1, limit: 10 });
+        const raw: any[] = Array.isArray(res?.pedidos) ? res.pedidos : [];
+        const filtered = raw.filter((p) => {
+          const d = new Date(p.criadoEm);
+          return d >= dateRange.startDate && d <= dateRange.endDate;
+        });
+        const recent = filtered
+          .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime())
+          .slice(0, 3)
+          .map((p) => ({
+            id: p.id,
+            cliente: p.cliente?.nome || '',
+            total: Number(p.total ?? 0),
+            status: String(p.status || '').toLowerCase().replace(/_/g, ' '),
+            criadoEm: new Date(p.criadoEm).toLocaleString('pt-BR'),
+          }));
+        setRecentOrders(recent);
+      } catch (error) {
+        setRecentOrders([]);
+      } finally {
         setOrdersLoading(false);
       }
     };
@@ -157,66 +147,34 @@ export default function StoreDashboard() {
     fetchAllData();
   }, [dateRange]);
 
-  // Calculate metrics based on filtered data and date range
-  const metrics = useMemo(() => {
-    // Filter orders within the selected date range
-    const filteredOrders = companyOrders.filter(o => {
-      const orderDate = new Date(o.criadoEm.replace(' ', 'T'));
-      return orderDate >= dateRange.startDate && orderDate <= dateRange.endDate;
-    });
-
-    // Calculate total sales in the period
-    const totalSales = filteredOrders.reduce((sum, o) => sum + o.total, 0);
-
-    // Count open orders (not delivered or cancelled) in the period
-    const openOrders = filteredOrders.filter(o => 
-      o.status !== "entregue" && o.status !== "cancelado"
-    ).length;
-
-    // Calculate average ticket for the period
-    const avgTicket = filteredOrders.length > 0 
-      ? totalSales / filteredOrders.length 
-      : 0;
-
-    // Count low stock products (always show current state, not date-dependent)
-    const lowStock = companyProducts.filter(p => p.stock <= 3).length;
-
-    return {
-      totalSales,
-      openOrders,
-      avgTicket,
-      lowStock,
-    };
-  }, [companyOrders, companyProducts, dateRange]);
-
-  // Get recent orders filtered by date range
-  const recentOrders = useMemo(() => {
-    const filteredOrders = companyOrders.filter(o => {
-      const orderDate = new Date(o.criadoEm.replace(' ', 'T'));
-      return orderDate >= dateRange.startDate && orderDate <= dateRange.endDate;
-    });
-    
-    return [...filteredOrders]
-      .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
-      .slice(0, 3);
-  }, [companyOrders, dateRange]);
-
-  const copyUrl = async () => {
-    await navigator.clipboard.writeText(url);
-    push({ message: "Link da vitrine copiado!", tone: "success" });
-  };
+  // Compute metrics
+  const totalSales = useMemo(() => salesData.reduce((sum, d) => sum + (Number(d.total) || 0), 0), [salesData]);
+  const openOrdersCount = useMemo(() => {
+    const list = Array.isArray(dashboardStats?.pedidosPorStatus) ? dashboardStats.pedidosPorStatus : [];
+    const openStatuses = new Set(["PENDENTE", "CONFIRMADO", "EM_PREPARO", "SAIU_ENTREGA"]);
+    return list.filter((s: any) => openStatuses.has(String(s.status))).reduce((acc: number, s: any) => acc + Number(s.quantidade || 0), 0);
+  }, [dashboardStats]);
+  const avgTicket = useMemo(() => Number(dashboardStats?.ticketMedio ?? 0), [dashboardStats]);
 
   const stats = [
-    { label: "Vendas (período)", value: formatCurrency(metrics.totalSales), icon: DollarSign, color: "text-[#16A34A]" },
-    { label: "Pedidos (em aberto)", value: metrics.openOrders.toString(), icon: ShoppingBag, color: "text-[#0EA5E9]" },
-    { label: "Ticket médio", value: formatCurrency(metrics.avgTicket), icon: TrendingUp, color: "text-[#D22630]" },
-    { label: "Baixo estoque", value: metrics.lowStock.toString(), icon: AlertTriangle, color: "text-[#F59E0B]" },
+    { label: "Vendas (período)", value: formatCurrency(totalSales), icon: DollarSign, color: "text-[#16A34A]" },
+    { label: "Pedidos (em aberto)", value: String(openOrdersCount), icon: ShoppingBag, color: "text-[#0EA5E9]" },
+    { label: "Ticket médio", value: formatCurrency(avgTicket), icon: TrendingUp, color: "text-[#D22630]" },
+    { label: "Baixo estoque", value: String(lowStockCount), icon: AlertTriangle, color: "text-[#F59E0B]" },
   ];
 
-  const storeName = user?.name || "Loja";
+  // Fallback legível para nome da loja a partir do slug
+  const humanizeSlug = (s: string) => String(s || "")
+  .split("-")
+  .filter(Boolean)
+  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+  .join(" ");
+
+  const storeNameLocal = localStorage.getItem("deliverei_company_name");
+  const storeName = storeNameLocal || humanizeSlug(slug) || "Loja";
 
   return (
-    <DashboardShell sidebar={<StoreSidebar />}>
+    <DashboardShell sidebar={<StoreSidebar />}> 
       <Helmet>
         <title>Deliverei | Dashboard - {storeName}</title>
       </Helmet>
@@ -227,134 +185,85 @@ export default function StoreDashboard() {
         <div className="w-full sm:w-auto sm:min-w-[280px]">
           <DateRangeFilter 
             value={dateRange} 
-            onChange={setDateRange}
+            onChange={setDateRange} 
           />
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="relative rounded-md border border-[#E5E7EB] bg-white p-4">
-              {statsLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-md">
-                  <Loading size="sm" />
-                </div>
-              )}
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-sm text-[#4B5563]">{stat.label}</div>
-                <Icon className={stat.color} size={20} />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat, idx) => (
+          <div key={idx} className="rounded-lg border border-[#E5E7EB] bg-white p-4">
+            <div className="flex items-center gap-3">
+              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              <div>
+                <div className="text-sm text-[#6B7280]">{stat.label}</div>
+                <div className="text-xl font-semibold text-[#111827]">{stat.value}</div>
               </div>
-              <div className="text-2xl font-bold text-[#1F2937]">{stat.value}</div>
             </div>
-          );
-        })}
-      </div>
-      
-      {/* Dashboard Sections */}
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
-        {/* Sales Chart Section */}
-        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold text-[#1F2937]">Gráfico de vendas</h3>
-          <SalesChart 
-            data={salesData}
-            loading={salesLoading}
-            error={salesError}
-          />
-        </section>
-
-        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm">
-          <h3 className="mb-3 text-lg font-semibold text-[#1F2937]">Vitrine da Loja</h3>
-          <p className="mb-3 text-sm text-[#4B5563]">
-            Compartilhe o link da sua vitrine com seus clientes ou visualize como ela está
-            aparecendo publicamente.
-          </p>
-          <div className="mb-3 flex items-center gap-2">
-            <Input value={url} readOnly className="flex-1 text-sm" />
-            <button
-              onClick={copyUrl}
-              className="flex items-center gap-1 rounded border border-[#E5E7EB] px-3 py-2 text-sm hover:bg-[#F9FAFB] transition"
-              title="Copiar link"
-            >
-              <Copy size={16} />
-            </button>
-            <a
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 rounded bg-[#D22630] px-3 py-2 text-sm text-white hover:bg-[#B31E27] transition"
-              title="Abrir vitrine"
-            >
-              <ExternalLink size={16} />
-            </a>
-            <button
-              onClick={() => setPreviewOpen(true)}
-              className="flex items-center gap-1 rounded bg-[#F3F4F6] px-3 py-2 text-sm hover:bg-[#E5E7EB] transition"
-              title="Preview"
-            >
-              <Eye size={16} />
-            </button>
           </div>
-          <small className="text-[#6B7280]">URL pública da vitrine</small>
-        </section>
+        ))}
+      </div>
 
-        {/* Recent Orders Section */}
-        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm relative">
-          <h3 className="mb-3 text-lg font-semibold text-[#1F2937]">Pedidos recentes</h3>
-          
-          {ordersLoading ? (
-            <div className="py-8 flex items-center justify-center">
-              <div className="flex items-center gap-2 text-[#4B5563]">
-                <Loading size="sm" />
-                <span className="text-sm">Carregando pedidos...</span>
-              </div>
-            </div>
+      {/* Sales Chart */}
+      <div className="mt-6 rounded-lg border border-[#E5E7EB] bg-white">
+        <div className="flex items-center justify-between border-b border-[#E5E7EB] p-4">
+          <h2 className="text-lg font-semibold text-[#111827]">Vendas no período</h2>
+          {salesLoading && <Loading label="Carregando gráfico..." />}
+        </div>
+        <div className="p-4">
+          {salesError ? (
+            <div className="text-sm text-[#DC2626]">{salesError}</div>
           ) : (
-            <div className="space-y-2">
-              {recentOrders.length === 0 ? (
-                <div className="py-8 text-center text-[#4B5563]">
-                  <p className="text-sm">Nenhum pedido encontrado</p>
-                  <p className="mt-1 text-xs text-[#6B7280]">
-                    Tente selecionar outro período
-                  </p>
-                </div>
-              ) : (
-                recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between border-b border-[#E5E7EB] pb-2">
-                    <div>
-                      <div className="text-sm font-medium text-[#1F2937]">Pedido #{order.id}</div>
-                      <div className="text-xs text-[#4B5563]">{order.cliente}</div>
-                    </div>
-                    <div className="text-sm font-semibold text-[#1F2937]">{formatCurrency(order.total)}</div>
-                  </div>
-                ))
-              )}
-            </div>
+            <SalesChart data={salesData} />
           )}
-        </section>
+        </div>
       </div>
 
-      {previewOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 p-6 flex items-center justify-center">
-          <div className="mx-auto max-w-5xl w-full rounded-lg bg-white shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#E5E7EB] p-3 bg-[#F9FAFB]">
-              <div className="font-medium text-[#1F2937]">Preview da Vitrine</div>
-              <button
-                onClick={() => setPreviewOpen(false)}
-                className="rounded p-1 hover:bg-[#E5E7EB] transition"
-                aria-label="Fechar"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="h-[70vh]">
-              <iframe title="vitrine-preview" src={url} className="h-full w-full border-0" />
-            </div>
+      {/* Recent Orders */}
+      <div className="mt-6 rounded-lg border border-[#E5E7EB] bg-white">
+        <div className="flex items-center justify-between border-b border-[#E5E7EB] p-4">
+          <h2 className="text-lg font-semibold text-[#111827]">Pedidos recentes</h2>
+          {ordersLoading && <Loading label="Carregando pedidos..." />}
+        </div>
+        <div className="p-4">
+          <div className="space-y-4">
+            {recentOrders.map((order) => (
+              <div key={order.id} className="flex items-center justify-between rounded-md border border-[#E5E7EB] p-3">
+                <div>
+                  <div className="font-medium text-[#111827]">#{order.id} - {order.cliente}</div>
+                  <div className="text-sm text-[#6B7280]">{order.criadoEm}</div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-[#6B7280] capitalize">{order.status}</div>
+                  <div className="text-sm font-semibold text-[#111827]">{formatCurrency(order.total)}</div>
+                </div>
+              </div>
+            ))}
+            {recentOrders.length === 0 && (
+              <div className="text-sm text-[#6B7280]">Nenhum pedido no período selecionado.</div>
+            )}
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Storefront preview CTA */}
+      <div className="mt-6 rounded-lg border border-[#E5E7EB] bg-white p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-lg font-semibold text-[#111827]">Vitrine da loja</div>
+            <div className="text-sm text-[#6B7280]">Abra a vitrine para ver seus produtos como os clientes veem.</div>
+          </div>
+          <div className="flex gap-2">
+            <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-md border border-[#E5E7EB] px-3 py-2 text-sm text-[#111827] hover:bg-[#F9FAFB]">
+              <ExternalLink className="h-4 w-4" /> Abrir vitrine
+            </a>
+            <button onClick={copyUrl} className="inline-flex items-center gap-2 rounded-md border border-[#E5E7EB] px-3 py-2 text-sm text-[#111827] hover:bg-[#F9FAFB]">
+              <Copy className="h-4 w-4" /> Copiar link
+            </button>
+          </div>
+        </div>
+      </div>
     </DashboardShell>
   );
 }

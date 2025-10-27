@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -23,11 +23,9 @@ model Empresa {
   ativo       Boolean  @default(true)
   slug        String?  @unique
   subdominio  String?  @unique
-  ativa       Boolean  @default(true)
-  asaasCustomerId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
+  asaasCustomerId String? @map("asaas_customer_id")
   usuarios  Usuario[]
   produtos  Produto[]
   pedidos   Pedido[]

@@ -1,0 +1,94 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "React 18",
+    "Vite 5",
+    "React Router 6",
+    "Tailwind CSS 3",
+    "Headless UI",
+    "Heroicons",
+    "lucide-react",
+    "Axios",
+    "Stripe JS",
+    "date-fns",
+    "Recharts",
+    "Supabase JS (configured)",
+    "Node/Express (mock backend)"
+  ],
+  "features": [
+    {
+      "name": "Client Authentication",
+      "description": "Customer login/logout using real backend via /api/auth/login; persists JWT and tenant slug; handles refresh token via /api/auth/refresh.",
+      "files": [
+        "src/contexts/ClientAuthContext.tsx",
+        "src/pages/storefront/ClientLogin.tsx",
+        "src/services/apiClient.ts"
+      ]
+    },
+    {
+      "name": "Cart Management",
+      "description": "Global shopping cart context with fetch/add/update/remove/clear and toast feedback.",
+      "files": [
+        "src/contexts/CartContext.tsx",
+        "src/pages/storefront/CartDrawer.tsx",
+        "src/pages/storefront/CartDrawerBackend.tsx"
+      ]
+    },
+    {
+      "name": "Product Catalog (Storefront)",
+      "description": "Storefront product listing and add-to-cart flow using ProductCard.",
+      "files": [
+        "src/pages/storefront/VitrineBackend.tsx",
+        "src/pages/storefront/Vitrine.tsx",
+        "src/components/ProductCard.tsx"
+      ]
+    },
+    {
+      "name": "Checkout",
+      "description": "Checkout page and cart summary; integrates with cart and (planned) Stripe subscription.",
+      "files": [
+        "src/pages/storefront/Checkout.tsx"
+      ]
+    },
+    {
+      "name": "HTTP Client & Interceptors",
+      "description": "Axios client with Authorization and X-Tenant-Slug headers; auto-refresh on 401; mock session handling.",
+      "files": [
+        "src/services/apiClient.ts"
+      ]
+    },
+    {
+      "name": "Mock Backend (Dev/Test)",
+      "description": "Express server exposing /api endpoints for auth, products, cart, orders, coupons, etc.",
+      "files": [
+        "mock-backend/server.js"
+      ]
+    },
+    {
+      "name": "Test Plans (Testsprite)",
+      "description": "Frontend E2E test plan covering auth, cart, checkout and admin flows.",
+      "files": [
+        "testsprite_tests/testsprite_frontend_test_plan.json"
+      ]
+    },
+    {
+      "name": "Build & Preview Config",
+      "description": "Vite configuration and NPM scripts for dev, build, and preview.",
+      "files": [
+        "vite.config.ts",
+        "package.json"
+      ]
+    },
+    {
+      "name": "Deployment & Docs",
+      "description": "Technical and deployment documentation for the project and integration guidance.",
+      "files": [
+        "INTEGRACAO-FRONTEND.md",
+        "README-ANALISE.md",
+        "RESUMO_TECNICO_COMPLETO.md",
+        "FASE-2-PLANEJAMENTO.md",
+        "netlify.toml"
+      ]
+    }
+  ]
+}

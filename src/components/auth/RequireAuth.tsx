@@ -12,8 +12,13 @@ export const RequireAuth: React.FC<{
   const { user } = useAuth();
   const location = useLocation();
 
-  // Extra guard: admin areas must use real backend token
+  const isDev = Boolean((import.meta as any)?.env?.DEV);
   const hasRealToken = Boolean(localStorage.getItem('deliverei_token') || localStorage.getItem('token'));
+  const hasTenantSlug = Boolean(
+    localStorage.getItem('deliverei_tenant_slug') ||
+    localStorage.getItem('deliverei_store_slug') ||
+    localStorage.getItem('tenantSlug')
+  );
   const requiresBackendToken = Boolean(
     role && (
       Array.isArray(role)
@@ -22,25 +27,37 @@ export const RequireAuth: React.FC<{
     )
   );
 
-  if (!isAuth || (requiresBackendToken && !hasRealToken)) {
+  // Em desenvolvimento: só exige autenticação básica; ignora token real
+  if (isDev) {
+    if (!isAuth) {
+      return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    }
+    if (role && !allowed) {
+      let redirectPath = "/storefront"; // default para cliente
+      if (user?.role === "superadmin") redirectPath = "/admin/super";
+      else if (user?.role === "empresa") redirectPath = "/admin/store";
+      else if (user?.role === "suporte") redirectPath = "/support/tickets";
+      else if (user?.role === "cliente") redirectPath = "/storefront";
+      return <Navigate to={redirectPath} replace />;
+    }
+    return children;
+  }
+
+  // Produção: aplica regra de token real para áreas administrativas
+  const mustRedirectToLogin =
+    !isAuth ||
+    (requiresBackendToken && !hasRealToken && !hasTenantSlug);
+
+  if (mustRedirectToLogin) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   if (role && !allowed) {
-    // Instead of redirecting to home, redirect to the user's appropriate dashboard
-    // This prevents the intermediate redirect issue
-    let redirectPath = "/storefront"; // default for cliente
-    
-    if (user?.role === "superadmin") {
-      redirectPath = "/admin/super";
-    } else if (user?.role === "empresa") {
-      redirectPath = "/admin/store";
-    } else if (user?.role === "suporte") {
-      redirectPath = "/support/tickets";
-    } else if (user?.role === "cliente") {
-      redirectPath = "/storefront";
-    }
-    
+    let redirectPath = "/storefront"; // default para cliente
+    if (user?.role === "superadmin") redirectPath = "/admin/super";
+    else if (user?.role === "empresa") redirectPath = "/admin/store";
+    else if (user?.role === "suporte") redirectPath = "/support/tickets";
+    else if (user?.role === "cliente") redirectPath = "/storefront";
     return <Navigate to={redirectPath} replace />;
   }
 

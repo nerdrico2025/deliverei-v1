@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Loading } from '../../components/common/Loading';
+import { formatCurrency, parseBRNumber } from '../../utils/formatters';
 
 export const Cupons: React.FC = () => {
   const [cupons, setCupons] = useState<Cupom[]>([]);
@@ -156,7 +157,7 @@ export const Cupons: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-semibold text-gray-900">
-                        {cupom.tipo === 'PERCENTUAL' ? `${cupom.valor}%` : `R$ ${cupom.valor.toFixed(2)}`}
+                        {cupom.tipo === 'PERCENTUAL' ? `${cupom.valor}%` : formatCurrency(cupom.valor)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -260,9 +261,9 @@ export const Cupons: React.FC = () => {
                   min="0"
                   step="0.01"
                   value={formData.valor}
-                  onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, valor: parseBRNumber(e.target.value) })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder={formData.tipo === 'PERCENTUAL' ? '10' : '50.00'}
+                  placeholder={formData.tipo === 'PERCENTUAL' ? '10' : '50,00'}
                 />
               </div>
 

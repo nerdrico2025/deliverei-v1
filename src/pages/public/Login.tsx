@@ -33,7 +33,7 @@ export default function Login() {
 
       // Determine redirect based on email/role
       // This logic mirrors the AuthContext login logic
-      let redirectPath = "/storefront"; // default for cliente
+      let redirectPath = "/dashboard"; // default for cliente
       
       if (email === "admin@deliverei.com.br") {
         redirectPath = "/admin/super";

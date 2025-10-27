@@ -14,13 +14,17 @@ export interface LoginResponse {
     id: string;
     nome: string;
     email: string;
-    tipo: 'ADMIN' | 'CLIENTE';
+    tipo: 'ADMIN' | 'CLIENTE' | 'SUPER_ADMIN' | 'ADMIN_EMPRESA';
     empresaId?: string;
+    telefone?: string;
   };
   empresa?: {
     id: string;
     nome: string;
     slug: string;
+    subdominio?: string;
+    telefone?: string;
+    endereco?: string;
     customDomain?: string | null;
   };
 }
@@ -263,7 +267,6 @@ export interface HistoricoPagamentoAssinatura {
   faturaUrl?: string;
 }
 
-// FASE 4 - Novos tipos para Pagamentos
 export interface Pagamento {
   id: string;
   empresaId: string;
@@ -293,9 +296,6 @@ export interface CreatePagamentoRequest {
   metodoPagamento: 'PIX' | 'CARTAO' | 'BOLETO';
 }
 
-// FASE 4 - Novos tipos para WhatsApp
-
-// FASE 4 - Novos tipos para WhatsApp
 export interface MensagemWhatsApp {
   id: string;
   empresaId: string;
@@ -320,7 +320,6 @@ export interface ConfigurarWhatsAppRequest {
   tokenApi: string;
 }
 
-// FASE 4 - Novos tipos para Webhooks
 export interface WebhookLog {
   id: string;
   empresaId: string;
@@ -334,8 +333,8 @@ export interface WebhookLog {
 
 const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/auth/login', data);
-    return response.data;
+    const res = await apiClient.post('/auth/login', data);
+    return res.data;
   },
   
   logout: async (): Promise<void> => {
@@ -343,47 +342,47 @@ const authApi = {
   },
   
   refreshToken: async (refreshToken: string): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/auth/refresh', { refreshToken });
-    return response.data;
+    const res = await apiClient.post('/auth/refresh', { refreshToken });
+    return res.data;
   },
 };
 
 const produtosApi = {
   listar: async (): Promise<Produto[]> => {
-    const response = await apiClient.get<Produto[]>('/produtos');
-    return (response as any).data?.data || (response as any).data || [];
+    const res = await apiClient.get('/produtos');
+    return res.data;
   },
   
   buscar: async (id: string): Promise<Produto> => {
-    const response = await apiClient.get<Produto>(`/produtos/${id}`);
-    return response.data;
+    const res = await apiClient.get(`/produtos/${id}`);
+    return res.data;
   },
   
   recomendacoes: async (produtoId: string): Promise<Recomendacao[]> => {
-    const response = await apiClient.get<Recomendacao[]>(`/produtos/${produtoId}/recomendacoes`);
-    return response.data;
+    const res = await apiClient.get(`/produtos/${produtoId}/recomendacoes`);
+    return res.data;
   },
 };
 
 const carrinhoApi = {
   obter: async (): Promise<Carrinho> => {
-    const response = await apiClient.get<Carrinho>('/carrinho');
-    return response.data;
+    const res = await apiClient.get('/carrinho');
+    return res.data;
   },
   
   adicionarItem: async (produtoId: string, quantidade: number): Promise<Carrinho> => {
-    const response = await apiClient.post<Carrinho>('/carrinho/itens', { produtoId, quantidade });
-    return response.data;
+    const res = await apiClient.post('/carrinho/itens', { produtoId, quantidade });
+    return res.data;
   },
   
   atualizarItem: async (itemId: string, quantidade: number): Promise<Carrinho> => {
-    const response = await apiClient.put<Carrinho>(`/carrinho/itens/${itemId}`, { quantidade });
-    return response.data;
+    const res = await apiClient.put(`/carrinho/itens/${itemId}`, { quantidade });
+    return res.data;
   },
   
   removerItem: async (itemId: string): Promise<Carrinho> => {
-    const response = await apiClient.delete<Carrinho>(`/carrinho/itens/${itemId}`);
-    return response.data;
+    const res = await apiClient.delete(`/carrinho/itens/${itemId}`);
+    return res.data;
   },
   
   limpar: async (): Promise<void> => {
@@ -391,206 +390,197 @@ const carrinhoApi = {
   },
   
   checkout: async (data: CheckoutRequest): Promise<CheckoutResponse> => {
-    const response = await apiClient.post<CheckoutResponse>('/carrinho/checkout', data);
-    return response.data;
+    const res = await apiClient.post('/checkout', data);
+    return res.data;
   },
 };
 
 const cuponsApi = {
   listar: async (): Promise<Cupom[]> => {
-    const response = await apiClient.get<Cupom>('/cupons' as any);
-    return (response as any).data as Cupom[];
+    const res = await apiClient.get('/cupons');
+    return res.data;
   },
   
   criar: async (data: Omit<Cupom, 'id' | 'empresaId' | 'usoAtual' | 'criadoEm' | 'atualizadoEm'>): Promise<Cupom> => {
-    const response = await apiClient.post<Cupom>('/cupons', data);
-    return response.data;
+    const res = await apiClient.post('/cupons', data);
+    return res.data;
   },
   
   atualizar: async (id: string, data: Partial<Cupom>): Promise<Cupom> => {
-    const response = await apiClient.patch<Cupom>(`/cupons/${id}`, data);
-    return response.data;
+    const res = await apiClient.put(`/cupons/${id}`, data);
+    return res.data;
   },
   
   remover: async (id: string): Promise<Cupom> => {
-    const response = await apiClient.delete<Cupom>(`/cupons/${id}`);
-    return response.data;
+    const res = await apiClient.delete(`/cupons/${id}`);
+    return res.data;
   },
 };
 
 const pedidosApi = {
   listar: async (params?: { status?: string; page?: number; limit?: number }): Promise<{ pedidos: Pedido[]; total: number }> => {
-    const response = await apiClient.get<{ pedidos: Pedido[]; total: number }>('/pedidos', { params });
-    return response.data;
+    const res = await apiClient.get('/pedidos', { params });
+    return res.data;
   },
   
   buscar: async (id: string): Promise<Pedido> => {
-    const response = await apiClient.get<Pedido>(`/pedidos/${id}`);
-    return response.data;
+    const res = await apiClient.get(`/pedidos/${id}`);
+    return res.data;
   },
   
   atualizarStatus: async (id: string, status: string): Promise<Pedido> => {
-    const response = await apiClient.put<Pedido>(`/pedidos/${id}/status`, { status });
-    return response.data;
+    const res = await apiClient.put(`/pedidos/${id}/status`, { status });
+    return res.data;
   },
   
   meusPedidos: async (): Promise<Pedido[]> => {
-    const response = await apiClient.get<Pedido[]>('/pedidos/meus');
-    return response.data;
+    const res = await apiClient.get('/meus-pedidos');
+    return res.data;
   },
 };
 
 const dashboardApi = {
   estatisticas: async (): Promise<DashboardEstatisticas> => {
-    const response = await apiClient.get<DashboardEstatisticas>('/dashboard/estatisticas');
-    return response.data;
+    const res = await apiClient.get('/dashboard/estatisticas');
+    return res.data;
   },
   
   vendas: async (periodo: 'dia' | 'semana' | 'mes'): Promise<VendasPeriodo[]> => {
-    const response = await apiClient.get<VendasPeriodo[]>('/dashboard/vendas', { params: { periodo } });
-    return response.data;
+    const res = await apiClient.get(`/dashboard/vendas?periodo=${periodo}`);
+    return res.data;
   },
   
   produtosPopulares: async (): Promise<ProdutoPopular[]> => {
-    const response = await apiClient.get<ProdutoPopular[]>('/dashboard/produtos-populares');
-    return response.data;
+    const res = await apiClient.get('/dashboard/produtos-populares');
+    return res.data;
   },
 };
 
-// FASE 4 - API de Assinaturas
 const assinaturasApi = {
   listarPlanos: async (): Promise<PlanoAssinatura[]> => {
-    const response = await apiClient.get<PlanoAssinatura[]>('/assinaturas/planos');
-    return response.data;
+    const res = await apiClient.get('/planos');
+    return res.data;
   },
 
   assinar: async (data: CheckoutAssinaturaRequest): Promise<CheckoutAssinaturaResponse> => {
-    const response = await apiClient.post<CheckoutAssinaturaResponse>('/assinaturas/checkout', data);
-    return response.data;
+    const res = await apiClient.post('/assinaturas/checkout', data);
+    return res.data;
   },
 
   minhas: async (): Promise<Assinatura[]> => {
-    const response = await apiClient.get<Assinatura[]>('/assinaturas/minhas');
-    return response.data;
+    const res = await apiClient.get('/assinaturas/minhas');
+    return res.data;
   },
 };
 
-// FASE 4 - API de Pagamentos
 const pagamentosApi = {
   criar: async (data: CreatePagamentoRequest): Promise<Pagamento> => {
-    const response = await apiClient.post<Pagamento>('/pagamentos', data);
-    return response.data;
+    const res = await apiClient.post('/pagamentos', data);
+    return res.data;
   },
 
   obter: async (id: string): Promise<Pagamento> => {
-    const response = await apiClient.get<Pagamento>(`/pagamentos/${id}`);
-    return response.data;
+    const res = await apiClient.get(`/pagamentos/${id}`);
+    return res.data;
   },
 };
 
-// FASE 4 - API de WhatsApp
 const whatsappApi = {
   enviarMensagem: async (data: EnviarMensagemRequest): Promise<{ sucesso: boolean; mensagem: string }> => {
-    const response = await apiClient.post<{ sucesso: boolean; mensagem: string }>('/whatsapp/enviar', data);
-    return response.data;
+    const res = await apiClient.post('/whatsapp/enviar', data);
+    return res.data;
   },
 
   configurar: async (data: ConfigurarWhatsAppRequest): Promise<{ sucesso: boolean; mensagem: string }> => {
-    const response = await apiClient.post<{ sucesso: boolean; mensagem: string }>('/whatsapp/configurar', data);
-    return response.data;
+    const res = await apiClient.post('/whatsapp/configurar', data);
+    return res.data;
   },
 };
 
-// FASE 4 - API de Webhooks
 const webhooksApi = {
   getLogs: async (params?: { origem?: string; processado?: boolean; limit?: number; offset?: number }): Promise<{ logs: WebhookLog[]; total: number }> => {
-    const response = await apiClient.get<{ logs: WebhookLog[]; total: number }>('/webhooks/logs', { params });
-    return response.data;
+    const res = await apiClient.get('/webhooks/logs', { params });
+    return res.data;
   },
 };
 
-// API pública da vitrine (por slug)
 const storefrontApi = {
   getLojaInfo: async (slug: string): Promise<{ id: string; nome: string; slug: string; subdominio?: string }> => {
-    const response = await apiClient.get(`/public/${slug}/info`);
-    return response.data;
+    const res = await apiClient.get(`/public/${slug}/info`);
+    return res.data;
   },
   getProdutos: async (
     slug: string,
     params?: { page?: number; limit?: number; categoria?: string; search?: string }
   ): Promise<Produto[]> => {
-    const response = await apiClient.get(`/public/${slug}/produtos`, { params });
-    // Endpoint retorna { data, meta }
-    return response.data?.data || [];
+    const res = await apiClient.get(`/public/${slug}/produtos`, { params });
+    // Public endpoint returns a paginated wrapper { data: Produto[], meta: {...} }
+    return (res.data?.data ?? res.data);
   },
   getProduto: async (slug: string, id: string): Promise<Produto> => {
-    const response = await apiClient.get(`/public/${slug}/produtos/${id}`);
-    return response.data;
+    const res = await apiClient.get(`/public/${slug}/produtos/${id}`);
+    return res.data;
   },
   getCategorias: async (slug: string): Promise<string[]> => {
-    const response = await apiClient.get(`/public/${slug}/categorias`);
-    return response.data;
+    const res = await apiClient.get(`/public/${slug}/categorias`);
+    return res.data;
   },
 };
 
-// API de Domínios personalizados (admin)
 export interface DomainInfo { slug: string; customDomain?: string | null; redirectEnabled?: boolean }
 export interface DomainAvailability { available: boolean }
 
+// Companies API (experimental): tenta obter detalhes da empresa incluindo telefone
+export interface CompanyInfo { id: string; nome: string; slug: string; telefone?: string }
+const companiesApi = {
+  getBySlug: async (slug: string): Promise<CompanyInfo> => {
+    const res = await apiClient.get(`/v1/companies/${slug}`);
+    return res.data;
+  },
+};
+
 const avaliacoesApi = {
   minhasAvaliacoes: async (): Promise<Avaliacao[]> => {
-    try {
-      const response = await apiClient.get<Avaliacao[]>('/avaliacoes/minhas');
-      return Array.isArray(response.data) ? response.data : [];
-    } catch {
-      return [];
-    }
+    const res = await apiClient.get('/avaliacoes/minhas');
+    return res.data;
   },
   deletar: async (id: string): Promise<void> => {
-    try {
-      await apiClient.delete(`/avaliacoes/${id}`);
-    } catch {}
+    await apiClient.delete(`/avaliacoes/${id}`);
   },
 };
 
 const notificacoesApi = {
   listar: async (): Promise<Notificacao[]> => {
-    const response = await apiClient.get<any>('/notificacoes');
-    const data = response.data;
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.notificacoes)) return data.notificacoes;
-    return [];
+    const res = await apiClient.get('/notificacoes');
+    return res.data;
   },
   marcarLida: async (_id: string): Promise<void> => {
-    try {
-      await apiClient.put('/notificacoes/marcar-todas-lidas');
-    } catch {}
+    await apiClient.post('/notificacoes/marcar-lida', { id: _id });
   },
   marcarTodasLidas: async (): Promise<void> => {
-    await apiClient.put('/notificacoes/marcar-todas-lidas');
+    await apiClient.post('/notificacoes/marcar-todas-lidas');
   },
   deletar: async (_id: string): Promise<void> => {
-    // Sem endpoint no mock, operação otimista local
-    return;
+    await apiClient.delete(`/notificacoes/${_id}`);
   },
 };
 
 const domainApi = {
   getCurrent: async (): Promise<DomainInfo> => {
-    const response = await apiClient.get<DomainInfo>('/admin/store/domain');
-    return response.data;
+    const res = await apiClient.get('/domains/current');
+    return res.data;
   },
   checkAvailability: async (domain: string): Promise<DomainAvailability> => {
-    const response = await apiClient.get<DomainAvailability>('/admin/domain-availability', { params: { domain } });
-    return response.data;
+    const res = await apiClient.get('/domains/check', { params: { domain } });
+    return res.data;
   },
   save: async (customDomain: string, redirectEnabled?: boolean): Promise<{ sucesso: boolean; customDomain: string; redirectEnabled?: boolean }> => {
-    const response = await apiClient.post<{ sucesso: boolean; customDomain: string; redirectEnabled?: boolean }>('/admin/store/domain', { customDomain, redirectEnabled });
-    return response.data;
+    const res = await apiClient.post('/domains/save', { customDomain, redirectEnabled });
+    return res.data;
   },
   dnsStatus: async (domain: string): Promise<{ ok: boolean; records: { A: string[]; CNAME: string[] } }> => {
-    const response = await apiClient.get<{ ok: boolean; records: { A: string[]; CNAME: string[] } }>('/admin/domain-dns', { params: { domain } });
-    return response.data;
+    const res = await apiClient.get('/domains/dns-status', { params: { domain } });
+    return res.data;
   },
 };
 
@@ -608,8 +598,8 @@ export const backendApi = {
   whatsapp: whatsappApi,
   webhooks: webhooksApi,
   storefront: storefrontApi,
+  companies: companiesApi,
   domain: domainApi,
 };
 
-// Export individual APIs for direct imports
-export { carrinhoApi, authApi, produtosApi, cuponsApi, avaliacoesApi, notificacoesApi, pedidosApi, dashboardApi, assinaturasApi, pagamentosApi, whatsappApi, webhooksApi, storefrontApi, domainApi };
+export { carrinhoApi, authApi, produtosApi, cuponsApi, avaliacoesApi, notificacoesApi, pedidosApi, dashboardApi, assinaturasApi, pagamentosApi, whatsappApi, webhooksApi, storefrontApi, companiesApi, domainApi };

@@ -284,16 +284,18 @@ export class CarrinhoService {
         },
       });
 
-      // Criar itens do pedido (otimização: createMany ao invés de loop)
-      await tx.itemPedido.createMany({
-        data: carrinho.itens.map((item) => ({
-          pedidoId: novoPedido.id,
-          produtoId: item.produtoId,
-          quantidade: item.quantidade,
-          precoUnitario: item.precoUnitario,
-          subtotal: Number(item.precoUnitario) * item.quantidade,
-        })),
-      });
+      // Criar itens do pedido
+      for (const item of carrinho.itens) {
+        await tx.itemPedido.create({
+          data: {
+            pedidoId: novoPedido.id,
+            produtoId: item.produtoId,
+            quantidade: item.quantidade,
+            precoUnitario: item.precoUnitario,
+            subtotal: Number(item.precoUnitario) * item.quantidade,
+          },
+        });
+      }
 
       // Atualizar estoque de todos os produtos (otimização: updates em paralelo)
       await Promise.all(

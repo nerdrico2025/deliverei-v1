@@ -8,6 +8,7 @@ import { useCartContext } from "../../contexts/CartContext";
 import { Produto, storefrontApi } from "../../services/backendApi";
 import { useToast } from "../../ui/feedback/ToastContext";
 import { useClientAuth } from "../../contexts/ClientAuthContext";
+import { getPublicOrigin } from "../../services/api.utils";
 
 export default function VitrineBackend() {
   const navigate = useNavigate();
@@ -21,6 +22,12 @@ export default function VitrineBackend() {
   const [loading, setLoading] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  // Filtro por categoria
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>("");
+  const [loadingCategorias, setLoadingCategorias] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
 
   // Persistir o slug atual no localStorage para headers (X-Tenant-Slug)
   useEffect(() => {
@@ -32,25 +39,51 @@ export default function VitrineBackend() {
   const loadProdutos = useCallback(async () => {
     if (!slug) return;
     setLoading(true);
+    setErrorMessage("");
     try {
-      // Buscar info da loja para exibir o nome correto
-      try {
-        const loja = await storefrontApi.getLojaInfo(slug);
-        if (loja?.nome) setStoreName(loja.nome);
-      } catch (e) {
-        // ignora erro de info e continua com slug como nome
+      // Buscar info da loja para exibir o nome correto e validar slug
+      const loja = await storefrontApi.getLojaInfo(slug);
+      if (loja?.nome) setStoreName(loja.nome);
+      // Se o backend retornar um slug canônico diferente, redireciona
+      if (loja?.slug && loja.slug !== slug) {
+        setIsRedirecting(true);
+        navigate(`/loja/${loja.slug}`, { replace: true });
+        return; // interrompe a carga atual
       }
+      // Loja inativa
+      if ((loja as any)?.ativa === false) {
+        setErrorMessage("Loja inativa no momento. Tente novamente mais tarde.");
+        return;
+      }
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const msg = error?.response?.data?.message;
+      if (status === 404) {
+        setErrorMessage("Loja não encontrada. Verifique o link ou pesquise a loja.");
+      } else if (msg) {
+        setErrorMessage(msg);
+      } else {
+        setErrorMessage("Falha ao carregar informações da loja. Verifique sua conexão.");
+      }
+      push({ message: msg || 'Erro ao carregar loja', tone: 'error' });
+      if (import.meta.env.DEV) console.error('Erro ao carregar info da loja:', error);
+      setLoading(false);
+      return;
+    }
+
+    try {
       // Buscar produtos públicos por slug (apenas ativos)
-      const data = await storefrontApi.getProdutos(slug, { page: 1, limit: 100 });
+      const data = await storefrontApi.getProdutos(slug, { page: 1, limit: 100, categoria: categoriaSelecionada || undefined });
       setProdutos(data);
     } catch (error: any) {
       const errorMsg = error?.response?.data?.message || 'Erro ao carregar produtos';
+      setErrorMessage(errorMsg);
       push({ message: errorMsg, tone: 'error' });
       if (import.meta.env.DEV) console.error('Erro ao carregar produtos:', error);
     } finally {
       setLoading(false);
     }
-  }, [push, slug]);
+  }, [navigate, push, slug, categoriaSelecionada]);
 
   useEffect(() => {
     loadProdutos();
@@ -59,6 +92,26 @@ export default function VitrineBackend() {
       fetchCart();
     }
   }, [loadProdutos, fetchCart, isAuthenticated]);
+
+  // Carregar categorias disponíveis da vitrine
+  useEffect(() => {
+    if (!slug) return;
+    (async () => {
+      setLoadingCategorias(true);
+      try {
+        const cats = await storefrontApi.getCategorias(slug);
+        setCategorias(Array.isArray(cats) ? cats : []);
+      } catch (e) {
+        if (import.meta.env.DEV) console.error('Erro ao carregar categorias:', e);
+      } finally {
+        setLoadingCategorias(false);
+      }
+    })();
+  }, [slug]);
+
+  const selectCategoria = (cat: string) => {
+    setCategoriaSelecionada(cat);
+  };
 
   const onAddFromCard = async (product: { id: string; name: string; price: number; image?: string }) => {
     try {
@@ -89,6 +142,7 @@ export default function VitrineBackend() {
       id: p.id,
       name: p.nome,
       price: p.preco,
+      strikePrice: (p as any).preco_riscado,
       image: p.imagemUrl || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
       outOfStock: !p.disponivel,
       lowStock: p.estoque !== undefined && p.estoque < 5,
@@ -109,6 +163,26 @@ export default function VitrineBackend() {
         cliente={cliente ? { nome: cliente.nome, email: cliente.email } : undefined}
       />
       <div className="mx-auto max-w-6xl px-4 py-6">
+        {errorMessage && (
+          <div className="mb-4 rounded-md border border-[#F59E0B] bg-[#FEF3C7] p-3 text-[#92400E]">
+            <p className="text-sm">{errorMessage}</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => loadProdutos()}
+                className="rounded-md border border-[#E5E7EB] bg-white px-3 py-1 text-sm text-[#1F2937] hover:bg-[#F3F4F6]"
+              >
+                Tentar novamente
+              </button>
+              <a
+                href={`${getPublicOrigin()}`}
+                className="rounded-md border border-[#E5E7EB] bg-white px-3 py-1 text-sm text-[#1F2937] hover:bg-[#F3F4F6]"
+              >
+                Ir para início
+              </a>
+            </div>
+          </div>
+        )}
         <div className="mb-4 flex items-center justify-between">
           <div className="flex flex-1 items-center gap-3">
             <input
@@ -119,6 +193,36 @@ export default function VitrineBackend() {
             />
           </div>
         </div>
+
+        {/* Filtro por categorias da vitrine */}
+        {categorias.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => selectCategoria("")}
+              className={`rounded-full border px-3 py-1 text-sm ${
+                categoriaSelecionada === "" ? 'bg-[#D22630] text-white border-[#D22630]' : 'bg-white text-[#1F2937] border-[#E5E7EB]'
+              }`}
+            >
+              Todas
+            </button>
+            {categorias.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => selectCategoria(cat)}
+                className={`rounded-full border px-3 py-1 text-sm ${
+                  categoriaSelecionada === cat ? 'bg-[#D22630] text-white border-[#D22630]' : 'bg-white text-[#1F2937] border-[#E5E7EB]'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+            {loadingCategorias && (
+              <span className="text-xs text-[#6B7280]">Carregando categorias...</span>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">

@@ -85,7 +85,7 @@ JWT_REFRESH_SECRET=seu-jwt-refresh-secret-super-secreto-aqui-mude-em-producao
 JWT_REFRESH_EXPIRES_IN=7d
 
 # Cors
-CORS_ORIGIN=http://localhost:3001,http://localhost:3000
+CORS_ORIGIN=http://localhost:5174,http://localhost:5173
 
 # Domínio base para multi-tenant
 BASE_DOMAIN=deliverei.com.br

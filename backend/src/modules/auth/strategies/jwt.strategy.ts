@@ -18,10 +18,34 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  // Modo mock desativado por política: sempre validar contra o banco
+  private readonly useMockAuth = false;
+
   async validate(payload: JwtPayload) {
+    if (this.useMockAuth) {
+      // Mock desativado
+      throw new UnauthorizedException('Mock auth está desativada.');
+    }
+
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: payload.sub },
-      include: { empresa: true },
+      select: {
+        id: true,
+        email: true,
+        nome: true,
+        tipo: true,
+        empresaId: true,
+        ativo: true,
+        empresa: {
+          select: {
+            id: true,
+            nome: true,
+            slug: true,
+            subdominio: true,
+            ativo: true,
+          },
+        },
+      },
     });
 
     if (!usuario || !usuario.ativo) {
@@ -29,7 +53,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return {
-      sub: usuario.id, // Adicionar sub para compatibilidade com controllers
+      sub: usuario.id,
       id: usuario.id,
       email: usuario.email,
       nome: usuario.nome,

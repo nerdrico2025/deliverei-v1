@@ -1,0 +1,127 @@
+import { PagamentosService } from './pagamentos.service';
+import { CreatePagamentoDto } from './dto/create-pagamento.dto';
+export declare class PagamentosController {
+    private readonly pagamentosService;
+    constructor(pagamentosService: PagamentosService);
+    criarPagamento(dto: CreatePagamentoDto, req: any): Promise<{
+        qrCode: any;
+        copyPaste: any;
+        boletoUrl: any;
+        invoiceUrl: any;
+        id: string;
+        pedidoId: string;
+        empresaId: string;
+        valor: number;
+        metodo: string;
+        status: string;
+        transacaoId: string | null;
+        asaasPaymentId: string | null;
+        asaasInvoiceUrl: string | null;
+        pixQrCode: string | null;
+        pixCopyPaste: string | null;
+        dataVencimento: Date | null;
+        dataPagamento: Date | null;
+        gatewayResposta: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    buscarPagamento(id: string, req: any): Promise<{
+        pedido: {
+            id: string;
+            numero: string;
+            status: string;
+            subtotal: number;
+            desconto: number;
+            total: number;
+            frete: number;
+            clienteId: string;
+            empresaId: string;
+            enderecoEntrega: string | null;
+            formaPagamento: string | null;
+            cupomDesconto: string | null;
+            observacoes: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+    } & {
+        id: string;
+        pedidoId: string;
+        empresaId: string;
+        valor: number;
+        metodo: string;
+        status: string;
+        transacaoId: string | null;
+        asaasPaymentId: string | null;
+        asaasInvoiceUrl: string | null;
+        pixQrCode: string | null;
+        pixCopyPaste: string | null;
+        boletoUrl: string | null;
+        dataVencimento: Date | null;
+        dataPagamento: Date | null;
+        gatewayResposta: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    buscarPagamentosPorPedido(pedidoId: string, req: any): Promise<{
+        id: string;
+        pedidoId: string;
+        empresaId: string;
+        valor: number;
+        metodo: string;
+        status: string;
+        transacaoId: string | null;
+        asaasPaymentId: string | null;
+        asaasInvoiceUrl: string | null;
+        pixQrCode: string | null;
+        pixCopyPaste: string | null;
+        boletoUrl: string | null;
+        dataVencimento: Date | null;
+        dataPagamento: Date | null;
+        gatewayResposta: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    buscarPagamentosEmpresa(req: any): Promise<({
+        pedido: {
+            numero: string;
+            total: number;
+        };
+    } & {
+        id: string;
+        pedidoId: string;
+        empresaId: string;
+        valor: number;
+        metodo: string;
+        status: string;
+        transacaoId: string | null;
+        asaasPaymentId: string | null;
+        asaasInvoiceUrl: string | null;
+        pixQrCode: string | null;
+        pixCopyPaste: string | null;
+        boletoUrl: string | null;
+        dataVencimento: Date | null;
+        dataPagamento: Date | null;
+        gatewayResposta: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+    })[]>;
+    cancelarPagamento(id: string, req: any): Promise<{
+        id: string;
+        pedidoId: string;
+        empresaId: string;
+        valor: number;
+        metodo: string;
+        status: string;
+        transacaoId: string | null;
+        asaasPaymentId: string | null;
+        asaasInvoiceUrl: string | null;
+        pixQrCode: string | null;
+        pixCopyPaste: string | null;
+        boletoUrl: string | null;
+        dataVencimento: Date | null;
+        dataPagamento: Date | null;
+        gatewayResposta: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+}

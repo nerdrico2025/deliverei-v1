@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { avaliacoesApi, Pedido } from '../services/backendApi';
 import { X, Star } from 'lucide-react';
+import { formatCurrency } from '../utils/formatters';
 
 interface ModalAvaliacaoProps {
   pedido: Pedido;
@@ -112,7 +113,7 @@ export const ModalAvaliacao: React.FC<ModalAvaliacaoProps> = ({ pedido, onClose,
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">{item.produto.nome}</h3>
                     <p className="text-sm text-gray-500">
-                      {item.quantidade}x R$ {item.precoUnitario.toFixed(2)}
+                      {item.quantidade}x {formatCurrency(item.precoUnitario)}
                     </p>
                   </div>
                 </div>

@@ -292,7 +292,7 @@ JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 
 # CORS
-CORS_ORIGIN=http://localhost:3001
+CORS_ORIGIN=http://localhost:5174
 
 # Multi-tenant
 BASE_DOMAIN=deliverei.com.br

@@ -95,7 +95,7 @@ export const ClientAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
-  }, [state]);
+  }, [state.isAuthenticated, state.cliente?.id, state.token]);
 
   /**
    * Login function
@@ -159,7 +159,7 @@ export const ClientAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const token = localStorage.getItem('deliverei_token');
       if (token) {
         // fire-and-forget
-        fetch((import.meta as any).env?.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/auth/logout` : 'http://localhost:3001/api/auth/logout', {
+        fetch((import.meta as any).env?.VITE_API_URL ? `${(import.meta as any).env.VITE_API_URL}/auth/logout` : 'http://localhost:3002/api/auth/logout', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => {});
@@ -207,7 +207,7 @@ export const ClientAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     login,
     logout,
     updateProfile,
-  }), [state, login, logout, updateProfile]);
+  }), [state.isAuthenticated, state.cliente?.id, state.token, login, logout, updateProfile]);
 
   return <ClientAuthContext.Provider value={value}>{children}</ClientAuthContext.Provider>;
 };

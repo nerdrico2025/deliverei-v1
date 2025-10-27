@@ -1,0 +1,415 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Login with Valid Credentials",
+    "description": "Verify that a user can successfully log in with valid credentials, receive a JWT and tenant context, and be redirected appropriately.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Input valid username/email and password"
+      },
+      {
+        "type": "action",
+        "description": "Click on the login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify successful authentication and receipt of JWT and tenant slug"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is redirected to the storefront"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Login with Invalid Credentials",
+    "description": "Verify that login fails with incorrect username or password and an appropriate error message is shown.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Input invalid username/email and/or password"
+      },
+      {
+        "type": "action",
+        "description": "Click the login button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login failure and display of error message"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that no JWT or tenant information is stored"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "JWT Token Refresh on Expiration",
+    "description": "Verify the automatic refresh of JWT token when expired during API requests, and that tenant context is maintained.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login and obtain a valid JWT and refresh token"
+      },
+      {
+        "type": "action",
+        "description": "Simulate token expiration on a subsequent API call"
+      },
+      {
+        "type": "action",
+        "description": "Trigger any authorized API request that requires JWT"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify interceptor triggers refresh token API call"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new JWT token is stored and API call succeeds"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify tenant slug is correctly sent in headers during refresh and subsequent requests"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Multi-Tenant Data Isolation Enforcement",
+    "description": "Verify users from one tenant cannot access or see data from other tenants across authentication, product browsing, cart, orders, and admin dashboards.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as User A under Tenant A"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access data from Tenant B by manipulating API requests or URLs"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that all attempts are denied with appropriate error responses"
+      },
+      {
+        "type": "action",
+        "description": "Login as Admin under Tenant B"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify admin dashboard and data reflect only Tenant B's data"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Browse Product Catalog and Add Items to Cart",
+    "description": "Verify that users can browse the product catalog, see product cards, and successfully add products to the global cart with correct updates.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as a customer"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the storefront product catalog"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product cards display correct product details"
+      },
+      {
+        "type": "action",
+        "description": "Add a product to the cart from the product card"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cart state updates globally and toast notification appears"
+      },
+      {
+        "type": "action",
+        "description": "Add multiple quantities of a different product to the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify correct quantity updates and consistent cart state"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Update Cart Item Quantities and Remove Items",
+    "description": "Verify users can update item quantities, remove individual items, and clear the entire cart with appropriate feedback.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the cart drawer or cart page"
+      },
+      {
+        "type": "action",
+        "description": "Update the quantity of a cart item to a valid number"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cart total and item quantities update correctly"
+      },
+      {
+        "type": "action",
+        "description": "Remove one item from the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify item is removed and cart updates"
+      },
+      {
+        "type": "action",
+        "description": "Clear all items in the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cart is empty and corresponding toast or notification is shown"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Checkout Flow with Payment Integration",
+    "description": "Verify that users can proceed to checkout, view cart summary, select a payment method (PIX, credit card, boleto, subscriptions), and complete payment without errors.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add items to the cart and proceed to checkout"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cart summary displays correct items, prices, and totals"
+      },
+      {
+        "type": "action",
+        "description": "Select a payment method (test all supported types in separate runs)"
+      },
+      {
+        "type": "action",
+        "description": "Enter required payment details"
+      },
+      {
+        "type": "action",
+        "description": "Submit payment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify payment success response and order creation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error handling for invalid payment details"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Admin Dashboard Displays Accurate Sales Metrics",
+    "description": "Verify that the admin dashboard loads and displays sales metrics, product popularity, and order statistics accurately according to database data and selected date filters.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as an admin user"
+      },
+      {
+        "type": "action",
+        "description": "Access the admin dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify sales metrics are displayed correctly"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product popularity and order statistics charts load correctly"
+      },
+      {
+        "type": "action",
+        "description": "Apply varying date filters"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify data updates accurately according to filters without errors"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no 500 errors or data loading failures occur"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "API Error Handling and Logging in Production Mode",
+    "description": "Verify that API errors such as 4xx and 5xx responses are handled gracefully with appropriate user feedback and logged for production debugging.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger API calls that result in client errors (e.g., invalid data submission)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the frontend shows meaningful error messages to user"
+      },
+      {
+        "type": "action",
+        "description": "Trigger API calls that simulate server errors (e.g., 500 Internal Server Error)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error handling mechanisms activate without crashing and log errors appropriately"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Axios HTTP Client Interceptors Send Authorization and Tenant Headers",
+    "description": "Verify that all API requests include the Authorization header with current JWT token and the X-Tenant-Slug header for multi-tenant context.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login to obtain JWT and tenant slug"
+      },
+      {
+        "type": "action",
+        "description": "Trigger various API calls (products, cart, orders)"
+      },
+      {
+        "type": "assertion",
+        "description": "Inspect requests to confirm Authorization header includes valid JWT"
+      },
+      {
+        "type": "assertion",
+        "description": "Inspect requests to confirm X-Tenant-Slug header matches the logged-in tenant"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Toast Notifications Appear for Cart Actions",
+    "description": "Verify that toast notifications appear after cart add, update, remove, and clear actions to provide user feedback.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add a product to the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a toast notification appears confirming addition"
+      },
+      {
+        "type": "action",
+        "description": "Update quantity of cart item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a toast notification appears confirming update"
+      },
+      {
+        "type": "action",
+        "description": "Remove an item from the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a toast notification appears confirming removal"
+      },
+      {
+        "type": "action",
+        "description": "Clear the entire cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a toast notification appears confirming the cart is emptied"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Frontend Performance: Code Splitting and Memory Usage",
+    "description": "Verify that code splitting is implemented properly and memory usage is within acceptable limits during navigation and usage of main features like storefront, cart, checkout, and admin panel.",
+    "category": "performance",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Build the application with production build settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that code splitting chunks are created in the build output"
+      },
+      {
+        "type": "action",
+        "description": "Perform navigation between main sections (storefront, cart, checkout, admin)"
+      },
+      {
+        "type": "assertion",
+        "description": "Use developer tools to monitor memory usage and verify no significant leaks"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Deployment Workflow and Environment Configuration",
+    "description": "Verify that backend and frontend deployments succeed on configured environment platforms with correct environment configurations and seamless updates.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Execute backend deployment using Render hosting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify backend API endpoints are live and operational"
+      },
+      {
+        "type": "action",
+        "description": "Execute frontend deployment to Netlify or configured host"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify frontend loads correctly and communicates with the backend"
+      },
+      {
+        "type": "action",
+        "description": "Validate environment variables are correctly applied in deployment"
+      }
+    ]
+  }
+]
