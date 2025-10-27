@@ -2876,7 +2876,7 @@ export class CreateUsuarioDto {
 // main.ts
 app.enableCors({
   origin: [
-    'http://localhost:3001',
+    'http://localhost:5174',
     'https://deliverei-frontend.vercel.app',
     /\.deliverei\.com\.br$/  // Subdomínios
   ],

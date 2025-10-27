@@ -1,7 +1,18 @@
 import axios from 'axios';
+import { resolveTenantSlug, persistTenantSlug } from './api.utils';
 
 // Base URL do backend - usando variável de ambiente ou fallback
-const baseURL = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
+const baseEnvURL = import.meta.env?.VITE_API_URL || 'http://localhost:3002/api';
+let baseURL = baseEnvURL;
+
+// Guard de desenvolvimento: evitar baseURL indevida em :3001
+if (typeof baseEnvURL === 'string' && baseEnvURL.includes(':3001') && (import.meta as any)?.env?.DEV) {
+  console.warn('[apiClient] VITE_API_URL aponta para :3001; aplicando fallback para http://localhost:3002/api');
+  baseURL = 'http://localhost:3002/api';
+}
+
+// Flag de ambiente
+const isDev = Boolean((import.meta as any)?.env?.DEV);
 
 // Criar instância do axios
 const apiClient = axios.create({
@@ -15,49 +26,19 @@ const apiClient = axios.create({
 // Interceptor para adicionar token de autenticação
 apiClient.interceptors.request.use(
   (config) => {
-    // Adicionar token se existir (prioriza backend real)
-    let token = localStorage.getItem('deliverei_token') || null;
-    if (!token) {
-      const rawAuth = localStorage.getItem('deliverei_auth');
-      if (rawAuth) {
-        try {
-          const parsed = JSON.parse(rawAuth);
-          token = parsed?.token || null;
-        } catch {}
-      }
-    }
-    // Novo: usar token do cliente da vitrine, se existir
-    if (!token) {
-      const rawClient = localStorage.getItem('deliverei_client_auth');
-      if (rawClient) {
-        try {
-          const parsed = JSON.parse(rawClient);
-          token = parsed?.token || null;
-        } catch {}
-      }
-    }
-    if (!token) {
-      token = localStorage.getItem('token');
-    }
-    if (token) {
+    const url = config?.url || '';
+
+    // Utilizar apenas token real do backend
+    const token = localStorage.getItem('deliverei_token') || '';
+    if (token && !url.includes('/auth/login') && !url.includes('/auth/refresh')) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Adicionar slug da empresa se existir (compatível com chaves antigas e backend real)
-    let tenantSlug =
-      localStorage.getItem('deliverei_tenant_slug') ||
-      localStorage.getItem('deliverei_store_slug') ||
-      localStorage.getItem('tenantSlug');
-
-    // Fallback: tentar derivar o slug da URL /loja/:slug
-    if (!tenantSlug && typeof window !== 'undefined') {
-      const match = window.location.pathname.match(/\/loja\/([^/]+)/);
-      if (match && match[1]) {
-        tenantSlug = match[1];
-      }
-    }
-
-    if (tenantSlug) {
+    // Adicionar slug da empresa (evitar em rotas de autenticação)
+    const isAuthRoute = url.includes('/auth/login') || url.includes('/auth/signup') || url.includes('/auth/refresh') || url.includes('/auth/logout') || url.includes('/auth/cadastro-empresa');
+    const tenantSlug = resolveTenantSlug();
+    if (tenantSlug && !isAuthRoute) {
+      persistTenantSlug(tenantSlug);
       config.headers['X-Tenant-Slug'] = tenantSlug;
     }
 
@@ -80,25 +61,24 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest: any = error.config || {};
 
-    // Se receber 401, tentar refresh de token antes de redirecionar
-    if (error.response?.status === 401) {
-      const hasRealToken = !!(localStorage.getItem('deliverei_token') || localStorage.getItem('token'));
-      const isMockSession = !hasRealToken && (
-        !!localStorage.getItem('deliverei_auth') || !!localStorage.getItem('deliverei_client_auth')
-      );
+    const url = originalRequest?.url || '';
+    if (url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/logout')) {
+      return Promise.reject(error);
+    }
 
-      // Em sessão mock (admin ou cliente), não redirecionar para login: deixe a UI tratar o erro
-      if (isMockSession) {
+    // Se receber 401, tratar conforme ambiente
+    if (error.response?.status === 401) {
+      // Em desenvolvimento, não forçar logout automático para evitar bounce
+      if (isDev) {
         return Promise.reject(error);
       }
 
+      const hasRealToken = !!localStorage.getItem('deliverei_token');
       const refreshToken = localStorage.getItem('deliverei_refresh_token');
 
-      // Evita loop infinito de retry
       if (hasRealToken && refreshToken && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
-          // Reutiliza uma única promessa de refresh quando em curso
           if (!isRefreshing) {
             isRefreshing = true;
             refreshPromise = axios.post(`${baseURL}/auth/refresh`, { refreshToken });
@@ -106,7 +86,6 @@ apiClient.interceptors.response.use(
           const refreshRes = await refreshPromise;
           const { accessToken, refreshToken: newRefreshToken } = refreshRes.data || {};
 
-          // Atualiza tokens
           if (accessToken) {
             localStorage.setItem('deliverei_token', accessToken);
           }
@@ -114,26 +93,19 @@ apiClient.interceptors.response.use(
             localStorage.setItem('deliverei_refresh_token', newRefreshToken);
           }
 
-          // Limpa estado de refresh
           isRefreshing = false;
           refreshPromise = null;
 
-          // Reenvia a requisição original com novos headers
           originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${localStorage.getItem('deliverei_token') || ''}`;
-          const tenantSlug =
-            localStorage.getItem('deliverei_tenant_slug') ||
-            localStorage.getItem('deliverei_store_slug') ||
-            localStorage.getItem('tenantSlug');
+          const tenantSlug = resolveTenantSlug();
           if (tenantSlug) {
             originalRequest.headers['X-Tenant-Slug'] = tenantSlug;
           }
           return apiClient(originalRequest);
         } catch (refreshErr) {
-          // Refresh falhou: limpar e redirecionar para login
           isRefreshing = false;
           refreshPromise = null;
-          localStorage.removeItem('token');
           localStorage.removeItem('deliverei_token');
           localStorage.removeItem('deliverei_refresh_token');
           localStorage.removeItem('deliverei_auth');
@@ -143,8 +115,7 @@ apiClient.interceptors.response.use(
           window.location.href = '/login';
         }
       } else {
-        // Sem refresh token ou não possui token real: efetua logout
-        localStorage.removeItem('token');
+        // Sem token real, forçar logout
         localStorage.removeItem('deliverei_token');
         localStorage.removeItem('deliverei_refresh_token');
         localStorage.removeItem('deliverei_auth');

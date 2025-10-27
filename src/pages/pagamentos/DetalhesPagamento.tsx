@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { Loading } from '../../components/common/Loading';
 import { PagamentoPix } from '../../components/PagamentoPix';
 import { Loading } from '../../components/common/Loading';
+import { formatCurrency } from '../../utils/formatters';
 
 const STATUS_CONFIG = {
   PENDENTE: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
@@ -130,7 +131,8 @@ export const DetalhesPagamento: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Valor</h3>
-                <p className="text-2xl font-bold text-gray-900">R$ {pagamento.valor.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-900">{formatCurrency(pagamento.valor)}</p>
+
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Data de Criação</h3>

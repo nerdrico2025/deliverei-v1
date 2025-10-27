@@ -11,9 +11,10 @@ import { RouteObject } from 'react-router-dom';
 const Home = lazy(() => import('../pages/public/Home'));
 const LoginBackend = lazy(() => import('../pages/public/LoginBackend'));
 const Logout = lazy(() => import('../pages/public/Logout'));
+const CadastroEmpresa = lazy(() => import('../pages/public/CadastroEmpresa'));
 
 // Subscription public pages
-const Planos = lazy(() => import('../pages/assinaturas/Planos'));
+const Planos = lazy(() => import('../pages/assinaturas/Planos').then(m => ({ default: m.Planos })));
 
 export const publicRoutes: RouteObject[] = [
   {
@@ -27,6 +28,10 @@ export const publicRoutes: RouteObject[] = [
   {
     path: '/logout',
     element: <Logout />,
+  },
+  {
+    path: '/cadastro-empresa',
+    element: <CadastroEmpresa />,
   },
   {
     path: '/assinaturas/planos',

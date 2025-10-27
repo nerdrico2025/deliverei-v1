@@ -7,6 +7,7 @@ import { Button } from "../../components/common/Button";
 import { useAuth } from "../../auth/AuthContext";
 import { useToast } from "../../ui/feedback/ToastContext";
 import { authApi } from "../../services/backendApi";
+import { resolveTenantSlug } from "../../services/api.utils";
 
 export default function LoginBackend() {
   const [email, setEmail] = useState("");
@@ -52,23 +53,38 @@ export default function LoginBackend() {
         senha: password,
       });
 
-      // Salvar tokens e slug retornado (compatível com headers do apiClient)
+      // Validar presença de tokens
+      if (!response?.accessToken) {
+        throw new Error('Resposta do backend sem accessToken');
+      }
+
+      // Salvar tokens
       localStorage.setItem('deliverei_token', response.accessToken);
-      localStorage.setItem('deliverei_refresh_token', response.refreshToken);
-      const slug = response?.empresa?.slug || '';
+      if (response.refreshToken) {
+        localStorage.setItem('deliverei_refresh_token', response.refreshToken);
+      }
+
+      // Extrair slug da empresa (compatível com diferentes formatos de resposta)
+      const slug = response?.empresa?.slug || response?.user?.empresa?.slug || response?.usuario?.empresa?.slug || '';
       if (slug) {
         localStorage.setItem('deliverei_tenant_slug', slug);
         localStorage.setItem('deliverei_store_slug', slug);
       }
 
-      // Atualizar contexto de autenticação (mock para compatibilidade)
+      // Persistir nome da empresa se disponível
+      const companyName = response?.empresa?.nome || response?.user?.empresa?.nome || response?.usuario?.empresa?.nome || '';
+      if (companyName) {
+        localStorage.setItem('deliverei_company_name', companyName);
+      }
+
+      // Atualizar contexto de autenticação (hidrata sem nova chamada se token+slug presentes)
       await login(email, password);
       
-      push({ message: "Login realizado com sucesso!", tone: "success" });
+      push({ message: 'Login realizado com sucesso!', tone: 'success' });
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.';
-      push({ message: errorMsg, tone: "error" });
-      console.error('Erro no login:', error);
+      // Exigir dados reais do backend
+      const msg = error?.response?.data?.message || error?.message || 'Falha no login. Verifique suas credenciais e conexão com o backend.';
+      push({ message: msg, tone: 'error' });
     } finally {
       setLoading(false);
     }
@@ -87,7 +103,7 @@ export default function LoginBackend() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder="seu@email.com.br"
                 required
               />
             </div>

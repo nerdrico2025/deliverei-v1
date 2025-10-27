@@ -10,18 +10,27 @@ import { RouteObject } from 'react-router-dom';
 import { RequireAuth } from '../components/auth/RequireAuth';
 
 // Lazy load client pages (FASE 3)
+const Dashboard = lazy(() => import('../pages/cliente/Dashboard'));
 const MeusPedidos = lazy(() => import('../pages/cliente/MeusPedidos').then(m => ({ default: m.MeusPedidos })));
 const MinhasAvaliacoes = lazy(() => import('../pages/cliente/MinhasAvaliacoes').then(m => ({ default: m.MinhasAvaliacoes })));
 
-// FASE 4 - Payment pages
-const HistoricoPagamentos = lazy(() => import('../pages/pagamentos/HistoricoPagamentos'));
-const DetalhesPagamento = lazy(() => import('../pages/pagamentos/DetalhesPagamento'));
+// Lazy load payment pages
+const HistoricoPagamentos = lazy(() => import('../pages/pagamentos/HistoricoPagamentos').then(m => ({ default: m.HistoricoPagamentos })));
+const DetalhesPagamento = lazy(() => import('../pages/pagamentos/DetalhesPagamento').then(m => ({ default: m.DetalhesPagamento })));
 
 export const clientRoutes: RouteObject[] = [
   {
+    path: '/dashboard',
+    element: (
+      <RequireAuth role="cliente">
+        <Dashboard />
+      </RequireAuth>
+    ),
+  },
+  {
     path: '/meus-pedidos',
     element: (
-      <RequireAuth>
+      <RequireAuth role="cliente">
         <MeusPedidos />
       </RequireAuth>
     ),
@@ -29,7 +38,7 @@ export const clientRoutes: RouteObject[] = [
   {
     path: '/minhas-avaliacoes',
     element: (
-      <RequireAuth>
+      <RequireAuth role="cliente">
         <MinhasAvaliacoes />
       </RequireAuth>
     ),
@@ -37,7 +46,7 @@ export const clientRoutes: RouteObject[] = [
   {
     path: '/pagamentos',
     element: (
-      <RequireAuth>
+      <RequireAuth role="cliente">
         <HistoricoPagamentos />
       </RequireAuth>
     ),
@@ -45,7 +54,7 @@ export const clientRoutes: RouteObject[] = [
   {
     path: '/pagamentos/:id',
     element: (
-      <RequireAuth>
+      <RequireAuth role="cliente">
         <DetalhesPagamento />
       </RequireAuth>
     ),

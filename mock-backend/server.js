@@ -11,7 +11,7 @@ import { promises as dns } from 'dns';
 console.log('[mock-backend] booting server.js');
 
 // Update: allow overriding port via environment variable
-const PORT = parseInt(process.env.PORT || '3001', 10);
+const PORT = parseInt(process.env.PORT || '3003', 10);
 const ORIGINS = [
   'http://localhost:4173',
   'http://localhost:5173',

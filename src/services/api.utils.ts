@@ -83,7 +83,7 @@ function isAxiosError(error: unknown): error is AxiosError {
  * @param error - Error object
  */
 export function logError(context: string, error: unknown): void {
-  if (process.env.NODE_ENV === 'development') {
+  if ((import.meta as any)?.env?.DEV) {
     console.error(`[${context}]`, error);
   }
 }
@@ -139,4 +139,97 @@ export function buildQueryString(params: Record<string, any>): string {
  */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function resolveTenantSlug(): string | null {
+  try {
+    // 1) LocalStorage keys (prefer saved values)
+    const fromStorage = (typeof window !== 'undefined')
+      ? (
+        window.localStorage.getItem('deliverei_tenant_slug') ||
+        window.localStorage.getItem('deliverei_store_slug') ||
+        window.localStorage.getItem('tenantSlug')
+      )
+      : null;
+    if (fromStorage) return fromStorage;
+
+    if (typeof window !== 'undefined') {
+      // 2) URL path: /loja/:slug
+      const path = window.location.pathname || '';
+      const lojaMatch = path.match(/\/(?:loja)\/([^/]+)/);
+      if (lojaMatch && lojaMatch[1]) return lojaMatch[1];
+
+      // 3) Query params: ?slug=..., ?empresa=..., ?loja=...
+      const params = new URLSearchParams(window.location.search || '');
+      const qSlug = params.get('slug') || params.get('empresa') || params.get('loja');
+      if (qSlug) return qSlug;
+
+      // 4) Subdomain: <slug>.<domain>
+      const host = window.location.hostname || '';
+      const isLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(host);
+      if (!isLocal) {
+        const parts = host.split('.');
+        if (parts.length >= 3) {
+          const sub = parts[0];
+          if (sub && sub.toLowerCase() !== 'www') {
+            return sub;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+}
+
+export function persistTenantSlug(slug: string): void {
+  try {
+    if (!slug) return;
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('deliverei_tenant_slug', slug);
+      window.localStorage.setItem('deliverei_store_slug', slug);
+      window.localStorage.setItem('tenantSlug', slug);
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// --- Domain helpers (custom domain redirection) ---
+function getDomainRedirectPrefs(): { customDomain: string | null; redirectEnabled: boolean } {
+  try {
+    if (typeof window === 'undefined') return { customDomain: null, redirectEnabled: false };
+    const cd = window.localStorage.getItem('deliverei_custom_domain');
+    const reRaw = window.localStorage.getItem('deliverei_redirect_enabled');
+    const redirectEnabled = reRaw === 'true' || reRaw === '1';
+    const customDomain = cd && cd.trim() ? cd.trim().toLowerCase() : null;
+    return { customDomain, redirectEnabled };
+  } catch {
+    return { customDomain: null, redirectEnabled: false };
+  }
+}
+
+function toDomainUrl(domain: string): string {
+  const d = String(domain || '').trim().toLowerCase();
+  if (!d) return '';
+  if (d.startsWith('http://') || d.startsWith('https://')) return d;
+  return `https://${d}`;
+}
+
+export function getPublicOrigin(): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const isLocal = /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(origin);
+  const envDomain = (import.meta as any)?.env?.VITE_PUBLIC_APP_DOMAIN || 'https://deliverei.com.br';
+  return isLocal ? envDomain : origin;
+}
+
+export function buildStoreUrl(slug: string): string {
+  const s = String(slug || '').trim() || 'minha-marmitaria';
+  const { customDomain, redirectEnabled } = getDomainRedirectPrefs();
+  if (customDomain && redirectEnabled) {
+    // Quando redirecionamento está habilitado, prioriza domínio personalizado
+    return toDomainUrl(customDomain);
+  }
+  return `${getPublicOrigin()}/loja/${s}`;
 }

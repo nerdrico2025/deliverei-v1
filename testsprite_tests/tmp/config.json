@@ -1,0 +1,19 @@
+{
+  "status": "init",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:4179",
+  "executionArgs": {
+    "projectName": "deliverei-v1",
+    "projectPath": "/Users/rafaelcruz/Documents/TRAE/deliverei-v1",
+    "testIds": [
+      "TC001",
+      "TC008"
+    ],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-Y9v4yvU2dKgPUs0bmwk4Lpu8ofDAZEZkVwaI1Gkzlytcfyj3OKk8fL1sc5VqRHgnxivjFV6d_oWQQMDbi6GAQ9lznjgYRw9GVvBHGQsEV2cdDmrfpHhsUeqJtCNWLofaglk"
+    }
+  },
+  "proxy": "http://eb6fff21-4e72-4569-9f5c-f5d614d8b8a6:BS4hJKqFvJ7BAW7XqkUZpU2P1QvarHWG@tun.testsprite.com:8080"
+}

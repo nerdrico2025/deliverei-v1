@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import { LoginDto, SignupDto, CreateAccountFromOrderDto } from './dto';
+import { LoginDto, SignupDto, CreateAccountFromOrderDto, CadastroEmpresaDto } from './dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -20,10 +20,37 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
+  // Modo mock desativado por política
+  private readonly useMockAuth = false;
+
   async validateUser(email: string, senha: string): Promise<any> {
+    if (this.useMockAuth) {
+      throw new UnauthorizedException('Mock auth está desativada.');
+    }
+
     const usuario = await this.prisma.usuario.findUnique({
       where: { email },
-      include: { empresa: true },
+      select: {
+        id: true,
+        email: true,
+        nome: true,
+        senha: true,
+        tipo: true,
+        ativo: true,
+        empresaId: true,
+        telefone: true,
+        empresa: {
+          select: {
+            id: true,
+            nome: true,
+            slug: true,
+            subdominio: true,
+            ativo: true,
+            telefone: true,
+            endereco: true,
+          },
+        },
+      },
     });
 
     if (!usuario) {
@@ -64,7 +91,8 @@ export class AuthService {
         id: usuario.id,
         email: usuario.email,
         nome: usuario.nome,
-        role: usuario.role,
+        role: usuario.tipo,
+        telefone: usuario.telefone,
         empresaId: usuario.empresaId,
         empresa: usuario.empresa,
       },
@@ -108,7 +136,22 @@ export class AuthService {
         empresaId: signupDto.empresaId,
         tipo: signupDto.empresaId ? 'CLIENTE' : 'SUPER_ADMIN',
       },
-      include: { empresa: true },
+      select: {
+        id: true,
+        email: true,
+        nome: true,
+        tipo: true,
+        empresaId: true,
+        empresa: {
+          select: {
+            id: true,
+            nome: true,
+            slug: true,
+            subdominio: true,
+            ativo: true,
+          },
+        },
+      },
     });
 
     const payload: JwtPayload = {
@@ -136,6 +179,10 @@ export class AuthService {
   }
 
   async refreshAccessToken(refreshToken: string) {
+    if (this.useMockAuth) {
+      throw new UnauthorizedException('Mock auth está desativada.');
+    }
+
     const storedToken = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },
     });
@@ -172,6 +219,10 @@ export class AuthService {
   }
 
   async logout(refreshToken: string) {
+    if (this.useMockAuth) {
+      throw new UnauthorizedException('Mock auth está desativada.');
+    }
+
     const storedToken = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },
     });
@@ -186,6 +237,10 @@ export class AuthService {
   }
 
   private async generateRefreshToken(usuarioId: string): Promise<string> {
+    if (this.useMockAuth) {
+      return uuidv4();
+    }
+
     const token = uuidv4();
     const expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d');
     
@@ -248,6 +303,112 @@ export class AuthService {
         nome: usuario.nome,
         telefone: usuario.telefone,
         tipo: usuario.tipo,
+      },
+    };
+  }
+
+  async cadastroEmpresa(cadastroEmpresaDto: CadastroEmpresaDto) {
+    // Verificar se email do admin já existe
+    const usuarioExistente = await this.prisma.usuario.findUnique({
+      where: { email: cadastroEmpresaDto.emailAdmin },
+    });
+
+    if (usuarioExistente) {
+      throw new ConflictException('Email já cadastrado');
+    }
+
+    // Verificar se slug já existe
+    const empresaExistente = await this.prisma.empresa.findUnique({
+      where: { slug: cadastroEmpresaDto.slug },
+    });
+
+    if (empresaExistente) {
+      throw new ConflictException('Slug já está em uso');
+    }
+
+    // Hash da senha do admin
+    const hashedPassword = await bcrypt.hash(cadastroEmpresaDto.senhaAdmin, 10);
+
+    // Criar empresa e usuário admin em uma transação
+    const resultado = await this.prisma.$transaction(async (tx) => {
+      // Criar empresa
+      const empresa = await tx.empresa.create({
+        data: {
+          nome: cadastroEmpresaDto.nomeEmpresa,
+          email: cadastroEmpresaDto.emailAdmin,
+          telefone: cadastroEmpresaDto.telefoneEmpresa,
+          endereco: cadastroEmpresaDto.endereco ? 
+            `${cadastroEmpresaDto.endereco}, ${cadastroEmpresaDto.cidade}, ${cadastroEmpresaDto.estado}, ${cadastroEmpresaDto.cep}` : 
+            undefined,
+          slug: cadastroEmpresaDto.slug,
+          subdominio: cadastroEmpresaDto.slug,
+          ativo: true,
+        },
+        select: {
+          id: true,
+          nome: true,
+          slug: true,
+        },
+      });
+
+      // Criar usuário admin da empresa
+      const usuarioAdmin = await tx.usuario.create({
+        data: {
+          email: cadastroEmpresaDto.emailAdmin,
+          senha: hashedPassword,
+          nome: cadastroEmpresaDto.nomeAdmin,
+          telefone: cadastroEmpresaDto.telefoneAdmin,
+          empresaId: empresa.id,
+          tipo: 'ADMIN_EMPRESA',
+          ativo: true,
+        },
+        select: {
+          id: true,
+          email: true,
+          nome: true,
+          tipo: true,
+          empresaId: true,
+          empresa: {
+            select: {
+              id: true,
+              nome: true,
+              slug: true,
+              subdominio: true,
+              ativo: true,
+            },
+          },
+        },
+      });
+
+      return { empresa, usuarioAdmin };
+    });
+
+    // Gerar tokens JWT
+    const payload: JwtPayload = {
+      sub: resultado.usuarioAdmin.id,
+      email: resultado.usuarioAdmin.email,
+      role: resultado.usuarioAdmin.tipo,
+      empresaId: resultado.usuarioAdmin.empresaId,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = await this.generateRefreshToken(resultado.usuarioAdmin.id);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: resultado.usuarioAdmin.id,
+        email: resultado.usuarioAdmin.email,
+        nome: resultado.usuarioAdmin.nome,
+        tipo: resultado.usuarioAdmin.tipo,
+        empresaId: resultado.usuarioAdmin.empresaId,
+        empresa: resultado.usuarioAdmin.empresa,
+      },
+      empresa: {
+        id: resultado.empresa.id,
+        nome: resultado.empresa.nome,
+        slug: resultado.empresa.slug,
       },
     };
   }

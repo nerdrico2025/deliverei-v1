@@ -6,6 +6,7 @@ import { Button } from "../../../components/common/Button";
 import { X } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { formatCurrency } from "../../../utils/formatters";
+import { backendApi, pedidosApi } from "../../../services/backendApi";
 
 type OrderItem = {
   productId: string;
@@ -18,11 +19,10 @@ type Order = {
   id: string;
   cliente: string;
   total: number;
-  pagamento: "pendente" | "aprovado" | "recusado" | "estornado";
+  pagamento: string;
   status: "recebido" | "aprovado" | "em_preparo" | "saiu_entrega" | "entregue" | "cancelado";
   criadoEm: string;
   itens: OrderItem[];
-  empresaId: string;
 };
 
 const statusOptions: Order["status"][] = [
@@ -34,83 +34,72 @@ const statusOptions: Order["status"][] = [
   "cancelado",
 ];
 
-// Mock data with empresaId for data isolation
-const MOCK_ORDERS: Order[] = [
-  {
-    id: "1001",
-    cliente: "Maria Silva",
-    total: 72.3,
-    pagamento: "aprovado",
-    status: "recebido",
-    criadoEm: "2025-10-05 12:20",
-    itens: [
-      { productId: "p1", nome: "Pizza Margherita", qtd: 2, preco: 35.9 },
-      { productId: "p2", nome: "Refrigerante Coca-Cola 2L", qtd: 1, preco: 8.9 },
-    ],
-    empresaId: "pizza-express",
-  },
-  {
-    id: "1002",
-    cliente: "João Silva",
-    total: 79.8,
-    pagamento: "pendente",
-    status: "em_preparo",
-    criadoEm: "2025-10-05 12:30",
-    itens: [{ productId: "p3", nome: "Pizza Calabresa", qtd: 2, preco: 39.9 }],
-    empresaId: "pizza-express",
-  },
-  {
-    id: "1003",
-    cliente: "Ana Costa",
-    total: 42.9,
-    pagamento: "aprovado",
-    status: "saiu_entrega",
-    criadoEm: "2025-10-05 11:45",
-    itens: [
-      { productId: "p4", nome: "Pizza Portuguesa", qtd: 1, preco: 42.9 },
-    ],
-    empresaId: "pizza-express",
-  },
-  {
-    id: "2001",
-    cliente: "Carlos Mendes",
-    total: 61.8,
-    pagamento: "aprovado",
-    status: "recebido",
-    criadoEm: "2025-10-05 13:15",
-    itens: [
-      { productId: "p6", nome: "Whopper", qtd: 2, preco: 28.9 },
-      { productId: "p8", nome: "Batata Frita Grande", qtd: 1, preco: 12.9 },
-    ],
-    empresaId: "burger-king",
-  },
-  {
-    id: "2002",
-    cliente: "Fernanda Lima",
-    total: 32.9,
-    pagamento: "aprovado",
-    status: "entregue",
-    criadoEm: "2025-10-05 10:30",
-    itens: [{ productId: "p7", nome: "Mega Stacker 2.0", qtd: 1, preco: 32.9 }],
-    empresaId: "burger-king",
-  },
-];
+// Mapear status backend -> UI
+const backendToUiStatus = (s: string): Order["status"] => {
+  const map: Record<string, Order["status"]> = {
+    PENDENTE: "recebido",
+    CONFIRMADO: "aprovado",
+    EM_PREPARO: "em_preparo",
+    SAIU_ENTREGA: "saiu_entrega",
+    ENTREGUE: "entregue",
+    CANCELADO: "cancelado",
+  };
+  return map[s] || "recebido";
+};
+
+// Mapear status UI -> backend
+const uiToBackendStatus = (s: Order["status"]): string => {
+  const map: Record<Order["status"], string> = {
+    recebido: "PENDENTE",
+    aprovado: "CONFIRMADO",
+    em_preparo: "EM_PREPARO",
+    saiu_entrega: "SAIU_ENTREGA",
+    entregue: "ENTREGUE",
+    cancelado: "CANCELADO",
+  };
+  return map[s];
+};
 
 export default function OrdersPage() {
   const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState<"" | Order["status"]>("");
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [drawer, setDrawer] = useState<{ open: boolean; order?: Order }>({ open: false });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Filter orders by empresaId for data isolation
-    if (user?.empresaId) {
-      const filteredOrders = MOCK_ORDERS.filter(o => o.empresaId === user.empresaId);
-      setAllOrders(filteredOrders);
-    } else {
-      setAllOrders([]);
-    }
-  }, [user?.empresaId]);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const params: any = {};
+        if (filterStatus) params.status = uiToBackendStatus(filterStatus);
+        const res = await pedidosApi.listar(params);
+        const orders: Order[] = (res?.pedidos || []).map((p: any) => ({
+          id: p.id,
+          cliente: p.cliente?.nome || "",
+          total: Number(p.total ?? 0),
+          pagamento: (p.formaPagamento || "").toLowerCase(),
+          status: backendToUiStatus(p.status),
+          criadoEm: new Date(p.criadoEm).toLocaleString("pt-BR"),
+          itens: Array.isArray(p.itens)
+            ? p.itens.map((it: any) => ({
+                productId: it.produtoId,
+                nome: it.produto?.nome || "",
+                qtd: Number(it.quantidade ?? 0),
+                preco: Number(it.precoUnitario ?? 0),
+              }))
+            : [],
+        }));
+        setAllOrders(orders);
+      } catch (err) {
+        setAllOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [filterStatus]);
 
   const filtered = useMemo(
     () => (filterStatus ? allOrders.filter((o) => o.status === filterStatus) : allOrders),
@@ -120,11 +109,16 @@ export default function OrdersPage() {
   const openDetails = (o: Order) => setDrawer({ open: true, order: o });
   const closeDetails = () => setDrawer({ open: false });
 
-  const advanceStatus = (o: Order) => {
+  const advanceStatus = async (o: Order) => {
     const idx = statusOptions.indexOf(o.status);
     if (idx < 0 || idx >= statusOptions.length - 1) return;
     const next = statusOptions[idx + 1];
-    setAllOrders((curr) => curr.map((x) => (x.id === o.id ? { ...x, status: next } : x)));
+    try {
+      await pedidosApi.atualizarStatus(o.id, uiToBackendStatus(next));
+      setAllOrders((curr) => curr.map((x) => (x.id === o.id ? { ...x, status: next } : x)));
+    } catch (err) {
+      // silently fail for now; future: show toast
+    }
   };
 
   return (
@@ -165,7 +159,7 @@ export default function OrdersPage() {
               <tr key={o.id} className="border-t">
                 <td className="p-3 font-medium text-[#1F2937]">#{o.id}</td>
                 <td className="p-3">{o.cliente}</td>
-                <td className="p-3 capitalize">{o.pagamento}</td>
+                <td className="p-3 capitalize">{o.pagamento || '-'}</td>
                 <td className="p-3 capitalize">{o.status.replace("_", " ")}</td>
                 <td className="p-3">{o.criadoEm}</td>
                 <td className="p-3 text-right">
@@ -181,7 +175,7 @@ export default function OrdersPage() {
             {filtered.length === 0 && (
               <tr>
                 <td className="p-6 text-center text-[#4B5563]" colSpan={6}>
-                  Nenhum pedido encontrado para esta empresa.
+                  Nenhum pedido encontrado.
                 </td>
               </tr>
             )}
@@ -209,7 +203,7 @@ export default function OrdersPage() {
               </div>
               <div>
                 <span className="font-medium text-[#1F2937]">Pagamento:</span>{" "}
-                <span className="capitalize">{drawer.order.pagamento}</span>
+                <span className="capitalize">{drawer.order.pagamento || '-'}</span>
               </div>
 
               <div className="mt-4">

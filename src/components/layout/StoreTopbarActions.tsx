@@ -1,15 +1,15 @@
 import React from "react";
 import { ExternalLink, Copy } from "lucide-react";
 import { useToast } from "../../ui/feedback/ToastContext";
+import { resolveTenantSlug, buildStoreUrl } from "../../services/api.utils";
 
 function getStoreSlug() {
-  return (localStorage.getItem("deliverei_store_slug") || "minha-marmitaria").trim();
+  const fromStorage = localStorage.getItem("deliverei_store_slug");
+  return (fromStorage || resolveTenantSlug() || "minha-marmitaria").trim();
 }
 
 function getStoreUrl() {
-  const slug = getStoreSlug();
-  const origin = window.location.origin;
-  return `${origin}/loja/${slug}`;
+  return buildStoreUrl(getStoreSlug());
 }
 
 export function StoreTopbarActions() {

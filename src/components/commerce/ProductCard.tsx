@@ -1,11 +1,13 @@
 import { Button } from '../common/Button';
 import { Badge } from '../common/Badge';
 import { Flame, Crown, Sparkles } from 'lucide-react';
+import { formatCurrency } from '../../utils/formatters';
 
 interface Product {
   id: string;
   name: string;
   price: number;
+  strikePrice?: number;
   image?: string;
   description?: string;
   // Flags de destaque
@@ -20,12 +22,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(price);
-  };
+  const showStrike = typeof product.strikePrice === 'number' && product.strikePrice! > 0 && product.strikePrice! < product.price;
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
@@ -74,9 +71,14 @@ export const ProductCard = ({ product, onAddToCart }: ProductCardProps) => {
         )}
         
         <div className="flex items-center justify-between">
-          <span className="text-xl font-bold text-gray-900">
-            {formatPrice(product.price)}
-          </span>
+          <div className="flex items-baseline gap-2">
+            {showStrike && (
+              <span className="text-sm text-[#6B7280] line-through">{formatCurrency(product.strikePrice!)}</span>
+            )}
+            <span className="text-xl font-bold text-gray-900">
+              {formatCurrency(product.price)}
+            </span>
+          </div>
           
           <Button
             onClick={() => onAddToCart(product)}

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ShoppingCart, Search, Menu, ChevronDown, Package, LogOut, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface StorefrontHeaderProps {
   cartItemsCount?: number;
@@ -29,6 +30,7 @@ export const StorefrontHeader = ({
 }: StorefrontHeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,18 +46,15 @@ export const StorefrontHeader = ({
   }, []);
 
   const handleLogin = () => {
-    // Navigate to login - this would need proper navigation implementation
-    console.log(`Navigate to /loja/${storeSlug}/login`);
+    navigate(`/loja/${storeSlug}/login`, { state: { from: `/loja/${storeSlug}` } });
   };
 
   const handleLogout = () => {
-    // Logout logic - this would need proper auth implementation
     console.log('Logout');
     setMenuOpen(false);
   };
 
   const handleMyOrders = () => {
-    // Navigate to orders - this would need proper navigation implementation
     console.log('Navigate to /meus-pedidos');
     setMenuOpen(false);
   };
