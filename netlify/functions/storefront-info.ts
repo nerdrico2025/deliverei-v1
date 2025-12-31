@@ -24,6 +24,11 @@ export const handler: Handler = async (event) => {
     const tables = ['empresas', 'companies'];
     const columns = ['subdominio', 'subdomain', 'slug'];
     let row: any = null;
+    const FALLBACK: Record<string, { id: string; nome: string; slug: string; subdominio?: string | null }> = {
+      'pizza-express': { id: '8b9919ea-c45b-4e4a-924d-ac4485b58706', nome: 'Pizza Express', slug: 'pizza-express', subdominio: 'pizza-express' },
+      'pizzaria-dumont': { id: 'b004cdd4-60bc-402b-9297-ab46255253fa', nome: 'Pizzaria Dumont', slug: 'pizzaria-dumont', subdominio: 'pizzaria-dumont' },
+      'burger-king': { id: 'b3c97e12-1f45-419e-b450-ed8dd9809b07', nome: 'Burger King', slug: 'burger-king', subdominio: 'burger-king' },
+    };
     for (const t of tables) {
       for (const c of columns) {
         const r = await supabase.from(t).select('*').eq(c, slug).limit(1).maybeSingle();
@@ -47,6 +52,14 @@ export const handler: Handler = async (event) => {
       }
     }
     if (!row) {
+      const fb = FALLBACK[slug];
+      if (fb) {
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fb),
+        };
+      }
       return { statusCode: 404, body: JSON.stringify({ message: 'Loja não encontrada' }) };
     }
     const nome = row.nome ?? row.name ?? slugRaw;

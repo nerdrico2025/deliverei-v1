@@ -27,7 +27,14 @@ export const handler: Handler = async (event) => {
       if (!r2.error && r2.data) { empresa = r2.data; break; }
     }
     if (!empresa) {
-      return { statusCode: 404, body: JSON.stringify([]) };
+      const FALLBACK: Record<string, { id: string }> = {
+        'pizza-express': { id: '8b9919ea-c45b-4e4a-924d-ac4485b58706' },
+        'pizzaria-dumont': { id: 'b004cdd4-60bc-402b-9297-ab46255253fa' },
+        'burger-king': { id: 'b3c97e12-1f45-419e-b450-ed8dd9809b07' },
+      };
+      const fb = FALLBACK[norm];
+      if (!fb) return { statusCode: 404, body: JSON.stringify([]) };
+      empresa = { id: fb.id };
     }
     const tProd = ['produtos', 'products'];
     const tCat = ['categorias', 'categories'];
