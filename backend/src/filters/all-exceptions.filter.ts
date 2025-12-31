@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -53,17 +54,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error = exception.name;
     }
 
-    // Log do erro para debugging
-    this.logger.error(
-      `${status} - ${request.method} ${request.url}`,
-      exception instanceof Error ? exception.stack : JSON.stringify(exception),
-    );
+    const requestId = (request.headers['x-request-id'] as string) || uuidv4();
+    const logPayload = {
+      requestId,
+      method: request.method,
+      url: request.url,
+      status,
+      error,
+      message,
+    };
+    this.logger.error(JSON.stringify(logPayload), exception instanceof Error ? exception.stack : JSON.stringify(exception));
 
     // Response padronizada
     const errorResponse: any = {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
+      requestId,
       error,
       message,
     };
@@ -78,6 +85,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   private handlePrismaError(exception: Prisma.PrismaClientKnownRequestError) {
     switch (exception.code) {
+      case 'P2000':
+        return {
+          status: HttpStatus.BAD_REQUEST,
+          message: 'Valor muito longo para campo',
+          error: 'Bad Request',
+        };
+      case 'P2001':
+        return {
+          status: HttpStatus.NOT_FOUND,
+          message: 'Registro obrigatório não encontrado',
+          error: 'Not Found',
+        };
       case 'P2002':
         // Unique constraint violation
         const target = (exception.meta?.target as string[]) || [];
@@ -86,12 +105,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message: `Registro duplicado: ${target.join(', ')} já existe`,
           error: 'Conflict',
         };
+      case 'P2004':
+        return {
+          status: HttpStatus.BAD_REQUEST,
+          message: 'Falha de constraint de banco de dados',
+          error: 'Bad Request',
+        };
       case 'P2025':
         // Record not found
         return {
           status: HttpStatus.NOT_FOUND,
           message: 'Registro não encontrado',
           error: 'Not Found',
+        };
+      case 'P2010':
+        return {
+          status: HttpStatus.BAD_REQUEST,
+          message: 'Consulta inválida ao banco de dados',
+          error: 'Bad Request',
         };
       case 'P2003':
         // Foreign key constraint violation

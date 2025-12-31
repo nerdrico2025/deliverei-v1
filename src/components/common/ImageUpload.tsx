@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
-import { uploadImage, deleteImage } from '../../lib/supabase';
+import { uploadImage, deleteImage } from '../../services/supabaseClient';
 import { useToast } from '../../ui/feedback/ToastContext';
 
 interface ImageUploadProps {
@@ -49,6 +49,11 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
     try {
       setUploading(true);
+      try {
+        const { storageApi } = await import('../../services/backendApi');
+        const bucket = (import.meta.env.VITE_SUPABASE_BUCKET as string | undefined) || 'produtos';
+        await storageApi.ensureBucket(bucket);
+      } catch {}
 
       // Create preview
       const reader = new FileReader();
@@ -57,9 +62,17 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       };
       reader.readAsDataURL(file);
 
-      // Upload to Supabase
-      const publicUrl = await uploadImage(file);
-      onChange(publicUrl);
+      // Upload via backend (service role) to evitar RLS
+      const { storageApi } = await import('../../services/backendApi');
+      const bucket = (import.meta.env.VITE_SUPABASE_BUCKET as string | undefined) || 'produtos';
+      const form = new FormData();
+      form.append('file', file);
+      form.append('bucket', bucket);
+      const { default: apiClient } = await import('../../services/apiClient');
+      const res = await apiClient.post('/v1/storage/upload-image', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      onChange(res?.data?.url || '');
 
       push({
         message: 'Imagem enviada com sucesso!',
@@ -67,10 +80,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       });
     } catch (error) {
       console.error('Error uploading image:', error);
-      push({
-        message: error instanceof Error ? error.message : 'Erro ao enviar imagem',
-        tone: 'error',
-      });
+      push({ message: error instanceof Error ? error.message : 'Erro ao enviar imagem', tone: 'error' });
       setPreviewUrl(undefined);
     } finally {
       setUploading(false);

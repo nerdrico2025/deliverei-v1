@@ -6,6 +6,8 @@ import { CartDrawer } from "../../components/commerce/CartDrawer";
 import { useCart } from "../../hooks/useCart";
 import { Button } from "../../components/common/Button";
 import { useToast } from "../../ui/feedback/ToastContext";
+import { StorefrontThemeSettings, getThemeSettings, preloadImage } from "../../utils/themeSettings";
+import { storefrontApi } from "../../services/backendApi";
 
 type Product = {
   id: string;
@@ -60,6 +62,8 @@ export default function Vitrine() {
   const [useInfinite, setUseInfinite] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
   const [lastAddedId, setLastAddedId] = useState<string>();
+  const [theme, setTheme] = useState<StorefrontThemeSettings | null>(null);
+  const [bgReady, setBgReady] = useState<boolean>(false);
 
   const canLoadMore = useMemo(() => products.length < total, [products.length, total]);
 
@@ -74,6 +78,72 @@ export default function Vitrine() {
   useEffect(() => {
     loadPage(page);
   }, [page, loadPage]);
+
+  // Load theme settings (local first, then server) and listen via BroadcastChannel and custom event
+  useEffect(() => {
+    const s = slug || "storefront";
+    const local = getThemeSettings(s);
+    if (local) {
+      setTheme(local);
+      setBgReady(false);
+      if (local?.backgroundImage) {
+        preloadImage(local.backgroundImage)
+          .then(() => setBgReady(true))
+          .catch(() => setBgReady(false));
+      }
+    }
+    (async () => {
+      try {
+        const res = await storefrontApi.getTheme(s);
+        const settings = res?.settings || null;
+        if (settings) {
+          setTheme(settings);
+          setBgReady(false);
+          if (settings?.backgroundImage) {
+            preloadImage(settings.backgroundImage)
+              .then(() => setBgReady(true))
+              .catch(() => setBgReady(false));
+          }
+        }
+      } catch (err) {
+        console.warn("Falha ao buscar tema público:", err);
+      }
+    })();
+    const onThemeUpdated = (ev: any) => {
+      try {
+        if (ev?.detail?.slug !== s) return;
+        const st = ev.detail.settings as StorefrontThemeSettings;
+        setTheme(st);
+        setBgReady(false);
+        if (st?.backgroundImage) {
+          preloadImage(st.backgroundImage)
+            .then(() => setBgReady(true))
+            .catch(() => setBgReady(false));
+        }
+      } catch {}
+    };
+    window.addEventListener("deliverei_theme_settings_updated", onThemeUpdated as EventListener);
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("deliverei_theme_settings");
+      bc.onmessage = (msg: MessageEvent) => {
+        const data: any = msg?.data;
+        if (!data || data.slug !== s) return;
+        const st = data.settings as StorefrontThemeSettings;
+        setTheme(st);
+        setBgReady(false);
+        if (st?.backgroundImage) {
+          preloadImage(st.backgroundImage)
+            .then(() => setBgReady(true))
+            .catch(() => setBgReady(false));
+        }
+      };
+    } catch {}
+    return () => {
+      window.removeEventListener("deliverei_theme_settings_updated", onThemeUpdated as EventListener);
+      try { bc?.close(); } catch {}
+    };
+  }, [slug]);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -129,12 +199,31 @@ export default function Vitrine() {
   }));
 
   return (
-    <>
+    <div
+      className="min-h-screen"
+      style={
+        theme?.backgroundImage && bgReady
+          ? {
+              backgroundImage: `url(${theme.backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }
+          : theme
+          ? {
+              backgroundImage: `linear-gradient(135deg, ${theme.primaryColor} 0%, ${theme.secondaryColor} 100%)`,
+            }
+          : undefined
+      }
+    >
       <StorefrontHeader
         storeName="Loja Exemplo"
         storeSlug={slug}
         onCartClick={() => setCartOpen(true)}
         cartItemsCount={totalItems}
+        primaryColor={theme?.primaryColor}
+        secondaryColor={theme?.secondaryColor}
+        accentColor={theme?.accentColor}
       />
       <div className="mx-auto max-w-6xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between">
@@ -143,7 +232,10 @@ export default function Vitrine() {
               placeholder="Buscar marmitas..."
               className="h-10 flex-1 rounded-md border border-[#E5E7EB] px-3 focus:border-[#D22630] focus:ring-2 focus:ring-[#D22630]/20 outline-none"
             />
-            <button className="rounded-md bg-[#FFC107] px-3 py-2 text-[#1F2937] hover:bg-[#E0A806]">
+            <button
+              className="rounded-md px-3 py-2 text-[#1F2937]"
+              style={{ backgroundColor: theme?.secondaryColor || '#FFC107' }}
+            >
               Filtrar
             </button>
           </div>
@@ -152,16 +244,18 @@ export default function Vitrine() {
             <button
               onClick={() => resetAndSwitchMode(true)}
               className={`rounded px-3 py-1 border ${
-                useInfinite ? "bg-[#D22630] text-white border-[#D22630]" : "border-[#E5E7EB] text-[#1F2937]"
+                useInfinite ? "text-white" : "border-[#E5E7EB] text-[#1F2937]"
               }`}
+              style={useInfinite ? { backgroundColor: theme?.primaryColor || '#D22630', borderColor: theme?.primaryColor || '#D22630' } : undefined}
             >
               Infinite
             </button>
             <button
               onClick={() => resetAndSwitchMode(false)}
               className={`rounded px-3 py-1 border ${
-                !useInfinite ? "bg-[#D22630] text-white border-[#D22630]" : "border-[#E5E7EB] text-[#1F2937]"
+                !useInfinite ? "text-white" : "border-[#E5E7EB] text-[#1F2937]"
               }`}
+              style={!useInfinite ? { backgroundColor: theme?.primaryColor || '#D22630', borderColor: theme?.primaryColor || '#D22630' } : undefined}
             >
               Paginação
             </button>
@@ -211,6 +305,6 @@ export default function Vitrine() {
         lastAddedId={lastAddedId}
         onAddToCart={(p) => addItem({ id: p.id, name: p.title, price: p.price })}
       />
-    </>
+    </div>
   );
 }

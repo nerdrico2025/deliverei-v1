@@ -15,11 +15,11 @@ export class AsaasService {
     email: string;
     cpfCnpj: string;
     phone: string;
-  }) {
+  }, overrideKey?: string) {
     const response = await firstValueFrom(
       this.httpService.post(`${this.baseUrl}/customers`, data, {
         headers: {
-          'access_token': this.apiKey,
+          'access_token': overrideKey || this.apiKey,
           'Content-Type': 'application/json',
         },
       }),
@@ -34,11 +34,11 @@ export class AsaasService {
     value: number;
     dueDate: string;
     description: string;
-  }) {
+  }, overrideKey?: string) {
     const response = await firstValueFrom(
       this.httpService.post(`${this.baseUrl}/payments`, data, {
         headers: {
-          'access_token': this.apiKey,
+          'access_token': overrideKey || this.apiKey,
           'Content-Type': 'application/json',
         },
       }),
@@ -47,11 +47,11 @@ export class AsaasService {
     return response.data;
   }
 
-  async buscarCobranca(paymentId: string) {
+  async buscarCobranca(paymentId: string, overrideKey?: string) {
     const response = await firstValueFrom(
       this.httpService.get(`${this.baseUrl}/payments/${paymentId}`, {
         headers: {
-          'access_token': this.apiKey,
+          'access_token': overrideKey || this.apiKey,
         },
       }),
     );
@@ -59,15 +59,26 @@ export class AsaasService {
     return response.data;
   }
 
-  async cancelarCobranca(paymentId: string) {
+  async cancelarCobranca(paymentId: string, overrideKey?: string) {
     const response = await firstValueFrom(
       this.httpService.delete(`${this.baseUrl}/payments/${paymentId}`, {
         headers: {
-          'access_token': this.apiKey,
+          'access_token': overrideKey || this.apiKey,
         },
       }),
     );
 
     return response.data;
+  }
+
+  async testarConexao(overrideKey?: string) {
+    const response = await firstValueFrom(
+      this.httpService.get(`${this.baseUrl}/customers?limit=1`, {
+        headers: {
+          'access_token': overrideKey || this.apiKey,
+        },
+      }),
+    );
+    return { ok: true, sample: response.data };
   }
 }

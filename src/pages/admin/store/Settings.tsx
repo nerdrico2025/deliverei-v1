@@ -3,11 +3,23 @@ import { DashboardShell } from "../../../components/layout/DashboardShell";
 import { StoreSidebar } from "../../../components/layout/StoreSidebar";
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, Loader2, CheckCircle, AlertCircle, Info } from "lucide-react";
 import { useToast } from "../../../ui/feedback/ToastContext";
-import { domainApi, storefrontApi } from "../../../services/backendApi";
+import { domainApi, storefrontApi, themeApi, pagamentosApi } from "../../../services/backendApi";
 import { useAuth } from "../../../auth/AuthContext";
 import { resolveTenantSlug, buildStoreUrl } from "../../../services/api.utils";
+import { useLocation } from "react-router-dom";
+import {
+  StorefrontThemeSettings,
+  getThemeSettings,
+  saveThemeSettings,
+  isColorValid,
+  normalizeColor,
+  isImageTypeAllowed,
+  readImageFile,
+  preloadImage,
+  getSlugForSettings,
+} from "../../../utils/themeSettings";
 
 type Tab = "loja" | "pagamentos" | "integracoes" | "vitrine" | "marketing" | "promocoes";
 
@@ -18,9 +30,11 @@ type MarketingSettings = {
 };
 
  export default function StoreSettings() {
-   const [tab, setTab] = useState<Tab>("loja");
-   const { push } = useToast();
-   const { user } = useAuth();
+  const location = useLocation();
+  const initialTab = new URLSearchParams(location.search).get("tab") as Tab || "loja";
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const { push } = useToast();
+  const { user } = useAuth();
    const [storeName, setStoreName] = useState("");
    const [slug, setSlug] = useState("");
    const [storePhone, setStorePhone] = useState("");
@@ -44,6 +58,20 @@ type MarketingSettings = {
   const [redirectEnabled, setRedirectEnabled] = useState(false);
   const [dnsLoading, setDnsLoading] = useState(false);
   const [dnsResult, setDnsResult] = useState<{ ok: boolean; records: { A: string[]; CNAME: string[] } } | null>(null);
+
+  // Personalização Visual - estado
+  const [themePrimary, setThemePrimary] = useState<string>("#D22630");
+  const [themeSecondary, setThemeSecondary] = useState<string>("#FFC107");
+  const [themeAccent, setThemeAccent] = useState<string>("");
+  const [bgImage, setBgImage] = useState<string | undefined>(undefined);
+  const [bgReady, setBgReady] = useState<boolean>(false);
+  const [bgUploading, setBgUploading] = useState<boolean>(false);
+  const [bgError, setBgError] = useState<string | null>(null);
+  const [primaryError, setPrimaryError] = useState<string | null>(null);
+  const [secondaryError, setSecondaryError] = useState<string | null>(null);
+  const [accentError, setAccentError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved_server' | 'saved_local' | 'error'>('idle');
+  const [saveMessage, setSaveMessage] = useState<string>('');
  
    useEffect(() => {
      const saved = localStorage.getItem("deliverei_tenant_slug") ||
@@ -53,7 +81,47 @@ type MarketingSettings = {
      "";
      if (saved) setSlug(saved);
      else setSlug("minha-marmitaria");
-   }, []);
+  }, []);
+
+  // Carregar configurações de tema da vitrine (local primeiro, depois backend)
+  useEffect(() => {
+    const s = (slug || getSlugForSettings() || "minha-loja").trim();
+    const local = getThemeSettings(s);
+    if (local) {
+      setThemePrimary(local.primaryColor || "#D22630");
+      setThemeSecondary(local.secondaryColor || "#FFC107");
+      setThemeAccent(local.accentColor || "");
+      setBgImage(local.backgroundImage);
+      setBgReady(false);
+      if (local.backgroundImage) {
+        preloadImage(local.backgroundImage)
+          .then(() => setBgReady(true))
+          .catch(() => setBgReady(false));
+      }
+    } else {
+      setBgReady(false);
+    }
+    (async () => {
+      try {
+        const res = await themeApi.get();
+        const settings = res?.settings || null;
+        if (settings) {
+          setThemePrimary(settings.primaryColor || "#D22630");
+          setThemeSecondary(settings.secondaryColor || "#FFC107");
+          setThemeAccent(settings.accentColor || "");
+          setBgImage(settings.backgroundImage);
+          setBgReady(false);
+          if (settings?.backgroundImage) {
+            preloadImage(settings.backgroundImage)
+              .then(() => setBgReady(true))
+              .catch(() => setBgReady(false));
+          }
+        }
+      } catch (err) {
+        console.warn("Falha ao carregar tema do backend:", err);
+      }
+    })();
+  }, [slug]);
 
    useEffect(() => {
      // Não inicializar com user.name para evitar confusão com nome da empresa
@@ -254,6 +322,116 @@ type MarketingSettings = {
   // (uso centralizado via buildStoreUrl)
   const storeUrl = buildStoreUrl(slug || "minha-marmitaria");
 
+  const getEffectiveSlug = () => (slug || getSlugForSettings() || "minha-loja").trim();
+
+  const saveTheme = async (next?: Partial<StorefrontThemeSettings>) => {
+    const s = getEffectiveSlug();
+    const payload: StorefrontThemeSettings = {
+      primaryColor: normalizeColor(themePrimary),
+      secondaryColor: normalizeColor(themeSecondary),
+      accentColor: themeAccent ? normalizeColor(themeAccent) : undefined,
+      backgroundImage: bgImage,
+      updatedAt: Date.now(),
+      ...(next || {}),
+    };
+    // Validação obrigatória de cores principais/segundárias
+    const pOk = isColorValid(payload.primaryColor);
+    const sOk = isColorValid(payload.secondaryColor);
+    setPrimaryError(pOk ? null : "Informe uma cor HEX ou RGB válida");
+    setSecondaryError(sOk ? null : "Informe uma cor HEX ou RGB válida");
+    // Accent é opcional
+    if (payload.accentColor) {
+      setAccentError(isColorValid(payload.accentColor) ? null : "Informe uma cor válida ou deixe em branco");
+    } else {
+      setAccentError(null);
+    }
+    if (!pOk || !sOk) return; // não salvar se inválido
+    setSaveStatus('saving');
+    setSaveMessage('Salvando alterações...');
+    try {
+      // Persistir no backend
+      const res = await themeApi.update(payload);
+      if (res?.sucesso) {
+        // Atualizar localStorage e broadcast com resposta autoritativa
+        saveThemeSettings(s, res.settings);
+        setSaveStatus('saved_server');
+        setSaveMessage('Alterações salvas no servidor');
+        setTimeout(() => {
+          setSaveStatus('idle');
+          setSaveMessage('');
+        }, 1800);
+      } else {
+        throw new Error(res?.mensagem || "Falha ao salvar tema");
+      }
+    } catch (err: any) {
+      console.error("Erro ao salvar tema:", err);
+      // Ainda assim atualizar local para feedback imediato
+      saveThemeSettings(s, payload);
+      setSaveStatus('saved_local');
+      setSaveMessage('Alterações salvas localmente (servidor indisponível)');
+      setTimeout(() => {
+        setSaveStatus('idle');
+        setSaveMessage('');
+      }, 2000);
+      push({ message: "Não foi possível persistir no servidor agora. Suas alterações aparecerão localmente.", tone: "warning" });
+    }
+  };
+
+  const onColorChange = async (which: "primary" | "secondary" | "accent", value: string) => {
+    const v = normalizeColor(value);
+    if (which === "primary") {
+      setThemePrimary(v);
+      setPrimaryError(isColorValid(v) ? null : "Informe uma cor HEX ou RGB válida");
+    } else if (which === "secondary") {
+      setThemeSecondary(v);
+      setSecondaryError(isColorValid(v) ? null : "Informe uma cor HEX ou RGB válida");
+    } else {
+      setThemeAccent(v);
+      if (v) setAccentError(isColorValid(v) ? null : "Informe uma cor válida ou deixe em branco");
+      else setAccentError(null);
+    }
+    // Auto-save (com validação)
+    await saveTheme();
+  };
+
+  const onFileSelected: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    try {
+      setBgError(null);
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        setBgError("Arquivo excede 5MB");
+        push({ message: "Arquivo excede 5MB", tone: "warning" });
+        return;
+      }
+      if (!isImageTypeAllowed(file)) {
+        setBgError("Formato não suportado. Use JPG, PNG ou SVG");
+        push({ message: "Formato não suportado. Use JPG, PNG ou SVG", tone: "warning" });
+        return;
+      }
+      setBgUploading(true);
+      const dataUrl = await readImageFile(file);
+      await preloadImage(dataUrl).then(() => setBgReady(true)).catch(() => setBgReady(false));
+      setBgImage(dataUrl);
+      await saveTheme({ backgroundImage: dataUrl });
+      push({ message: "Imagem aplicada com sucesso!", tone: "success" });
+    } catch {
+      setBgError("Falha ao carregar imagem");
+      push({ message: "Falha ao carregar imagem", tone: "warning" });
+    } finally {
+      setBgUploading(false);
+      // limpar input para permitir re-seleção do mesmo arquivo
+      try { e.target.value = ""; } catch {}
+    }
+  };
+
+  const clearBackground = async () => {
+    setBgImage(undefined);
+    setBgReady(false);
+    await saveTheme({ backgroundImage: undefined });
+    push({ message: "Imagem removida", tone: "success" });
+  };
+
   const saveStoreData = async () => {
     // Validações rápidas antes de salvar
     if (!slug || !slug.trim()) {
@@ -292,31 +470,31 @@ type MarketingSettings = {
      push({ message: "URL copiada!", tone: "success" });
    };
 
-   return (
-     <DashboardShell sidebar={<StoreSidebar />}> 
-       <h1 className="mb-4 text-xl font-semibold text-[#1F2937]">Configurações</h1>
-       <div className="mb-4 flex flex-wrap gap-2">
-         {[
-           { k: "loja", l: "Loja" },
-           { k: "pagamentos", l: "Pagamentos" },
-           { k: "integracoes", l: "Integrações" },
-           { k: "vitrine", l: "Vitrine" },
+  return (
+    <DashboardShell sidebar={<StoreSidebar />}> 
+      <h1 className="mb-4 text-xl font-semibold text-[#1F2937]">Configurações</h1>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {[
+          { k: "loja", l: "Loja" },
+          { k: "pagamentos", l: "Pagamentos" },
+          { k: "integracoes", l: "Integrações" },
+          { k: "vitrine", l: "Vitrine" },
           { k: "marketing", l: "Marketing" },
-           { k: "promocoes", l: "Promoções" },
-         ].map((t) => (
-           <button
-             key={t.k}
-             onClick={() => setTab(t.k as Tab)}
-             className={`rounded px-3 py-2 text-sm ${
-               tab === t.k
-                 ? "bg-[#D22630] text-white"
-                 : "bg-white border border-[#E5E7EB] text-[#1F2937] hover:bg-[#F9FAFB]"
-             }`}
-           >
-             {t.l}
-           </button>
-         ))}
-       </div>
+          { k: "promocoes", l: "Promoções" },
+        ].map((t) => (
+          <button
+            key={t.k}
+            onClick={() => setTab(t.k as Tab)}
+            className={`rounded px-3 py-2 text-sm ${
+              tab === t.k
+                ? "bg-[#D22630] text-white"
+                : "bg-white border border-[#E5E7EB] text-[#1F2937] hover:bg-[#F9FAFB]"
+            }`}
+          >
+            {t.l}
+          </button>
+        ))}
+      </div>
 
        {tab === "loja" && (
          <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm space-y-6">
@@ -425,10 +603,233 @@ type MarketingSettings = {
              <Button onClick={saveStoreData}>Salvar Configurações</Button>
            </div>
          </section>
-       )}
+      )}
+
+      {tab === "pagamentos" && (
+        <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm space-y-6">
+          <div>
+            <h2 className="mb-2 text-lg font-semibold text-[#1F2937]">Gateway de Pagamento Asaas</h2>
+            <p className="mb-4 text-sm text-[#6B7280]">
+              Conecte sua empresa ao Asaas para receber via PIX, boleto e cartão. Consulte a documentação em{" "}
+              <a href="https://docs.asaas.com/docs/visao-geral" target="_blank" rel="noreferrer" className="text-[#D22630] underline">
+                docs.asaas.com
+              </a>.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-[#4B5563]">API Key do Asaas</label>
+                <Input
+                  placeholder="Insira sua API Key (sandbox/produção)"
+                  value={localStorage.getItem('deliverei_asaas_token') || ''}
+                  onChange={(e) => {
+                    try { localStorage.setItem('deliverei_asaas_token', e.target.value.trim()); } catch {}
+                  }}
+                />
+                <p className="mt-1 text-xs text-[#6B7280]">A chave não é enviada ao servidor até você testar a conexão.</p>
+              </div>
+              <div className="flex items-end gap-2">
+                <Button
+                  onClick={async () => {
+                    const token = localStorage.getItem('deliverei_asaas_token') || '';
+                    if (!token) {
+                      push({ message: 'Informe a API Key do Asaas.', tone: 'warning' });
+                      return;
+                    }
+                    try {
+                      const res = await pagamentosApi.testarAsaas(token);
+                      if (res?.ok) {
+                        push({ message: 'Conexão com Asaas válida!', tone: 'success' });
+                      } else {
+                        push({ message: 'Falha ao validar a conexão.', tone: 'warning' });
+                      }
+                    } catch (err: any) {
+                      const msg = err?.response?.data?.message || 'Não foi possível validar a conexão';
+                      push({ message: msg, tone: 'warning' });
+                    }
+                  }}
+                >
+                  Testar Conexão
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const token = localStorage.getItem('deliverei_asaas_token') || '';
+                    if (!token) {
+                      push({ message: 'Informe a API Key antes de salvar.', tone: 'warning' });
+                      return;
+                    }
+                    push({ message: 'API Key armazenada com segurança localmente.', tone: 'success' });
+                  }}
+                >
+                  Salvar
+                </Button>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-[#6B7280]">
+              Ambiente atual: Sandbox. Para produção, atualize a base no backend quando necessário.
+            </div>
+          </div>
+        </section>
+      )}
 
       {tab === "vitrine" && (
         <section className="rounded-lg border border-[#E5E7EB] bg-white p-6 shadow-sm space-y-6">
+          {/* Bloco de Personalização Visual */}
+          <div>
+            <h2 className="mb-2 text-lg font-semibold text-[#1F2937]">Personalização Visual da Vitrine</h2>
+            <p className="mb-4 text-sm text-[#6B7280]">Ajuste imagem de fundo e cores. Alterações são salvas automaticamente e refletidas em tempo real na vitrine.</p>
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Upload de imagem */}
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <label className="block text-sm font-medium text-[#4B5563]">Imagem de fundo</label>
+                  <span title="Formatos: JPG, PNG, SVG. Tamanho máximo 5MB." className="text-[#6B7280]"><Info size={14} /></span>
+                </div>
+                <div className="rounded border border-[#E5E7EB] bg-white p-3">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/svg+xml"
+                      onChange={onFileSelected}
+                      title="Selecione uma imagem JPG, PNG ou SVG (até 5MB)"
+                    />
+                    {bgImage && (
+                      <button
+                        type="button"
+                        onClick={clearBackground}
+                        className="rounded border border-[#E5E7EB] px-3 py-2 text-sm hover:bg-[#F9FAFB]"
+                        title="Remover imagem de fundo"
+                      >Remover</button>
+                    )}
+                  </div>
+                  {bgUploading && (
+                    <div className="mt-3 inline-flex items-center gap-2 text-sm text-[#1F2937]">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#D22630]" /> Carregando imagem...
+                    </div>
+                  )}
+                  {bgError && (
+                    <p className="mt-2 text-sm text-red-600 inline-flex items-center gap-1"><AlertCircle className="h-4 w-4" /> {bgError}</p>
+                  )}
+                  <p className="mt-2 text-xs text-[#6B7280]">Formatos suportados: JPG, PNG e SVG. Tamanho máximo: 5MB.</p>
+                </div>
+              </div>
+
+              {/* Pré-visualização */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#4B5563]">Pré-visualização</label>
+                <div className="relative h-44 overflow-hidden rounded border border-[#E5E7EB]">
+                  <div
+                    className="absolute inset-0"
+                    style={
+                      bgImage && bgReady
+                        ? { backgroundImage: `url(${bgImage})`, backgroundSize: "cover", backgroundPosition: "center" }
+                        : { backgroundImage: `linear-gradient(135deg, ${themePrimary} 0%, ${themeSecondary} 100%)` }
+                    }
+                  />
+                  {/* Barra superior (primária) */}
+                  <div className="absolute left-2 right-2 top-2 h-6 rounded" style={{ backgroundColor: themePrimary, opacity: 0.9 }} />
+                  {/* Controles de vitrine (secundária e destaque) */}
+                  <div className="absolute bottom-2 left-2 right-2 flex gap-2">
+                    <button className="rounded px-3 py-2 text-[#1F2937] shadow" style={{ backgroundColor: themeSecondary }}>Exemplo de botão</button>
+                    <span className="rounded px-2 py-1 text-xs" style={{ backgroundColor: themeAccent || "#E5E7EB", color: "#1F2937" }}>Destaque</span>
+                  </div>
+                  {/* Upload overlay */}
+                  {bgUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+                      <Loader2 className="h-5 w-5 animate-spin text-[#D22630]" />
+                      <span className="ml-2 text-sm text-[#1F2937]">Processando...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Seletor de cores */}
+            <div className="mt-6 grid gap-6 md:grid-cols-3">
+              {/* Cor principal */}
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <label className="block text-sm font-medium text-[#4B5563]">Cor principal</label>
+                  <span title="Aplicada em cabeçalhos, botões ativos e elementos principais" className="text-[#6B7280]"><Info size={14} /></span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={/^#/.test(themePrimary) ? themePrimary : "#D22630"} onChange={(e) => onColorChange("primary", e.target.value)} />
+                  <Input
+                    placeholder="#D22630 ou rgb(210,38,48)"
+                    value={themePrimary}
+                    onChange={(e) => onColorChange("primary", e.target.value)}
+                  />
+                </div>
+                {primaryError && <p className="mt-1 text-xs text-red-600 inline-flex items-center gap-1"><AlertCircle className="h-4 w-4" /> {primaryError}</p>}
+              </div>
+
+              {/* Cor secundária */}
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <label className="block text-sm font-medium text-[#4B5563]">Cor secundária</label>
+                  <span title="Aplicada em botões, elementos de suporte e destaques secundários" className="text-[#6B7280]"><Info size={14} /></span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={/^#/.test(themeSecondary) ? themeSecondary : "#FFC107"} onChange={(e) => onColorChange("secondary", e.target.value)} />
+                  <Input
+                    placeholder="#FFC107 ou rgb(255,193,7)"
+                    value={themeSecondary}
+                    onChange={(e) => onColorChange("secondary", e.target.value)}
+                  />
+                </div>
+                {secondaryError && <p className="mt-1 text-xs text-red-600 inline-flex items-center gap-1"><AlertCircle className="h-4 w-4" /> {secondaryError}</p>}
+              </div>
+
+              {/* Cor de destaque (opcional) */}
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <label className="block text-sm font-medium text-[#4B5563]">Cor de destaque (opcional)</label>
+                  <span title="Aplicada em etiquetas e pílulas de destaque quando definido" className="text-[#6B7280]"><Info size={14} /></span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={/^#/.test(themeAccent) ? themeAccent : "#E5E7EB"} onChange={(e) => onColorChange("accent", e.target.value)} />
+                  <Input
+                    placeholder="Ex: #22C55E ou rgb(34,197,94)"
+                    value={themeAccent}
+                    onChange={(e) => onColorChange("accent", e.target.value)}
+                  />
+                </div>
+                {accentError && <p className="mt-1 text-xs text-red-600 inline-flex items-center gap-1"><AlertCircle className="h-4 w-4" /> {accentError}</p>}
+              </div>
+            </div>
+
+            {/* Indicadores de salvamento automático */}
+            {saveStatus !== 'idle' && (
+              <div className="mt-3 inline-flex items-center gap-2 text-sm">
+                {saveStatus === 'saving' && (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-[#D22630]" />
+                    <span className="text-[#1F2937]">{saveMessage || 'Salvando alterações...'}</span>
+                  </>
+                )}
+                {saveStatus === 'saved_server' && (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600">{saveMessage || 'Alterações salvas no servidor'}</span>
+                  </>
+                )}
+                {saveStatus === 'saved_local' && (
+                  <>
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                    <span className="text-amber-600">{saveMessage || 'Alterações salvas localmente (servidor indisponível)'}</span>
+                  </>
+                )}
+                {saveStatus === 'error' && (
+                  <>
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <span className="text-red-600">Falha ao salvar alterações</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Bloco existente: Domínio personalizado */}
           <div>
             <h2 className="mb-4 text-lg font-semibold text-[#1F2937]">Domínio personalizado</h2>
             <div className="grid gap-4 md:grid-cols-2">

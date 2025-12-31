@@ -12,10 +12,11 @@ import {
   CheckoutDto,
 } from './dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { CuponsService } from '../../cupons/cupons.service';
 
 @Injectable()
 export class CarrinhoService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private cuponsService: CuponsService) {}
 
   async obterCarrinho(usuarioId: string, empresaId: string) {
     let carrinho = await this.prisma.carrinho.findFirst({
@@ -260,8 +261,15 @@ export class CarrinhoService {
       return acc + Number(item.precoUnitario) * item.quantidade;
     }, 0);
 
-    const desconto = 0; // TODO: Implementar lógica de cupom de desconto
-    const total = subtotal - desconto;
+    let desconto = 0;
+    if (dto.cupomDesconto) {
+      const resultado = await this.cuponsService.validar(
+        { codigo: dto.cupomDesconto, valorCompra: subtotal },
+        empresaId,
+      );
+      desconto = resultado.desconto;
+    }
+    const total = Math.max(subtotal - desconto, 0);
 
     // Gerar número do pedido
     const numeroPedido = `PED-${Date.now()}`;
@@ -277,7 +285,17 @@ export class CarrinhoService {
           total: total,
           clienteId: usuarioId,
           empresaId,
-          enderecoEntrega: dto.enderecoEntrega,
+          enderecoEntrega: [
+            dto.enderecoEntrega.rua,
+            dto.enderecoEntrega.numero,
+            dto.enderecoEntrega.complemento ? `(${dto.enderecoEntrega.complemento})` : '',
+            '-',
+            dto.enderecoEntrega.bairro,
+            '-',
+            `${dto.enderecoEntrega.cidade}/${dto.enderecoEntrega.estado}`,
+            '-',
+            dto.enderecoEntrega.cep,
+          ].filter(Boolean).join(' '),
           formaPagamento: dto.formaPagamento,
           cupomDesconto: dto.cupomDesconto,
           observacoes: dto.observacoes,
@@ -320,6 +338,10 @@ export class CarrinhoService {
 
       return novoPedido;
     });
+
+    if (dto.cupomDesconto) {
+      await this.cuponsService.incrementarUso(dto.cupomDesconto, empresaId);
+    }
 
     // Buscar pedido completo com itens
     return this.prisma.pedido.findUnique({

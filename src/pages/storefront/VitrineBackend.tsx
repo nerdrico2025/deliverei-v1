@@ -9,6 +9,7 @@ import { Produto, storefrontApi } from "../../services/backendApi";
 import { useToast } from "../../ui/feedback/ToastContext";
 import { useClientAuth } from "../../contexts/ClientAuthContext";
 import { getPublicOrigin } from "../../services/api.utils";
+import { StorefrontThemeSettings, getThemeSettings, preloadImage } from "../../utils/themeSettings";
 
 export default function VitrineBackend() {
   const navigate = useNavigate();
@@ -28,12 +29,84 @@ export default function VitrineBackend() {
   const [loadingCategorias, setLoadingCategorias] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
+  const [theme, setTheme] = useState<StorefrontThemeSettings | null>(null);
+  const [bgReady, setBgReady] = useState<boolean>(false);
 
   // Persistir o slug atual no localStorage para headers (X-Tenant-Slug)
   useEffect(() => {
     if (slug) {
       localStorage.setItem("deliverei_store_slug", slug);
     }
+  }, [slug]);
+
+  // Load theme settings from server and listen for changes (auto-apply)
+  useEffect(() => {
+    const s = slug || "minha-loja";
+    // Start with local settings for instant feedback
+    const local = getThemeSettings(s);
+    if (local) {
+      setTheme(local);
+      setBgReady(false);
+      if (local?.backgroundImage) {
+        preloadImage(local.backgroundImage)
+          .then(() => setBgReady(true))
+          .catch(() => setBgReady(false));
+      }
+    }
+    // Fetch server settings to ensure persistence
+    (async () => {
+      try {
+        const res = await storefrontApi.getTheme(s);
+        const settings = res?.settings || null;
+        if (settings) {
+          setTheme(settings);
+          setBgReady(false);
+          if (settings?.backgroundImage) {
+            preloadImage(settings.backgroundImage)
+              .then(() => setBgReady(true))
+              .catch(() => setBgReady(false));
+          }
+        }
+      } catch (err) {
+        // Ignore network errors; storefront still renders with local/fallback
+        console.warn("Falha ao buscar tema da vitrine:", err);
+      }
+    })();
+
+    const onThemeUpdated = (ev: any) => {
+      try {
+        if (ev?.detail?.slug !== s) return;
+        const st = ev.detail.settings as StorefrontThemeSettings;
+        setTheme(st);
+        setBgReady(false);
+        if (st?.backgroundImage) {
+          preloadImage(st.backgroundImage)
+            .then(() => setBgReady(true))
+            .catch(() => setBgReady(false));
+        }
+      } catch {}
+    };
+    window.addEventListener("deliverei_theme_settings_updated", onThemeUpdated as EventListener);
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("deliverei_theme_settings");
+      bc.onmessage = (msg: MessageEvent) => {
+        const data: any = msg?.data;
+        if (!data || data.slug !== s) return;
+        const st = data.settings as StorefrontThemeSettings;
+        setTheme(st);
+        setBgReady(false);
+        if (st?.backgroundImage) {
+          preloadImage(st.backgroundImage)
+            .then(() => setBgReady(true))
+            .catch(() => setBgReady(false));
+        }
+      };
+    } catch {}
+    return () => {
+      window.removeEventListener("deliverei_theme_settings_updated", onThemeUpdated as EventListener);
+      try { bc?.close(); } catch {}
+    };
   }, [slug]);
 
   const loadProdutos = useCallback(async () => {
@@ -53,7 +126,7 @@ export default function VitrineBackend() {
       // Loja inativa
       if ((loja as any)?.ativa === false) {
         setErrorMessage("Loja inativa no momento. Tente novamente mais tarde.");
-        return;
+        // mesmo com inatividade, não bloquear a vitrine por completo
       }
     } catch (error: any) {
       const status = error?.response?.status;
@@ -67,8 +140,8 @@ export default function VitrineBackend() {
       }
       push({ message: msg || 'Erro ao carregar loja', tone: 'error' });
       if (import.meta.env.DEV) console.error('Erro ao carregar info da loja:', error);
-      setLoading(false);
-      return;
+      // Não interromper: seguir tentando carregar produtos mesmo sem info da loja
+      setStoreName(slug || "Loja");
     }
 
     try {
@@ -153,7 +226,23 @@ export default function VitrineBackend() {
   ), [produtosFiltrados]);
 
   return (
-    <>
+    <div
+      className="min-h-screen"
+      style={
+        theme?.backgroundImage && bgReady
+          ? {
+              backgroundImage: `url(${theme.backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }
+          : theme
+          ? {
+              backgroundImage: `linear-gradient(135deg, ${theme.primaryColor} 0%, ${theme.secondaryColor} 100%)`,
+            }
+          : undefined
+      }
+    >
       <StorefrontHeader
         storeName={storeName}
         storeSlug={slug}
@@ -161,6 +250,9 @@ export default function VitrineBackend() {
         cartItemsCount={itemCount}
         isAuthenticated={isAuthenticated}
         cliente={cliente ? { nome: cliente.nome, email: cliente.email } : undefined}
+        primaryColor={theme?.primaryColor}
+        secondaryColor={theme?.secondaryColor}
+        accentColor={theme?.accentColor}
       />
       <div className="mx-auto max-w-6xl px-4 py-6">
         {errorMessage && (
@@ -201,8 +293,13 @@ export default function VitrineBackend() {
               type="button"
               onClick={() => selectCategoria("")}
               className={`rounded-full border px-3 py-1 text-sm ${
-                categoriaSelecionada === "" ? 'bg-[#D22630] text-white border-[#D22630]' : 'bg-white text-[#1F2937] border-[#E5E7EB]'
+                categoriaSelecionada === "" ? 'text-white' : 'bg-white text-[#1F2937] border-[#E5E7EB]'
               }`}
+              style={
+                categoriaSelecionada === ""
+                  ? { backgroundColor: theme?.primaryColor || '#D22630', borderColor: theme?.primaryColor || '#D22630' }
+                  : undefined
+              }
             >
               Todas
             </button>
@@ -212,8 +309,13 @@ export default function VitrineBackend() {
                 type="button"
                 onClick={() => selectCategoria(cat)}
                 className={`rounded-full border px-3 py-1 text-sm ${
-                  categoriaSelecionada === cat ? 'bg-[#D22630] text-white border-[#D22630]' : 'bg-white text-[#1F2937] border-[#E5E7EB]'
+                  categoriaSelecionada === cat ? 'text-white' : 'bg-white text-[#1F2937] border-[#E5E7EB]'
                 }`}
+                style={
+                  categoriaSelecionada === cat
+                    ? { backgroundColor: theme?.primaryColor || '#D22630', borderColor: theme?.primaryColor || '#D22630' }
+                    : undefined
+                }
               >
                 {cat}
               </button>
@@ -253,6 +355,6 @@ export default function VitrineBackend() {
         onClose={() => setCartOpen(false)}
         onCheckout={goCheckout}
       />
-    </>
+    </div>
   );
 }

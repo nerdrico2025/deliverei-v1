@@ -12,8 +12,7 @@ import { Loading } from '../../components/common/Loading';
 import { useToast } from '../../ui/feedback/ToastContext';
 import { Loading } from '../../components/common/Loading';
 
-// TODO: Substituir pela chave pública do Stripe (modo test)
-const stripePromise = loadStripe('pk_test_YOUR_STRIPE_PUBLIC_KEY');
+const stripePromise = loadStripe((import.meta as any)?.env?.VITE_STRIPE_PUBLIC_KEY || '');
 
 export const CheckoutAssinatura: React.FC = () => {
   const { planoId } = useParams<{ planoId: string }>();

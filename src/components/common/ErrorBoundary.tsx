@@ -8,6 +8,7 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 
 interface Props {
   children: ReactNode;
@@ -50,7 +51,7 @@ const DefaultFallback = ({ error, resetError }: { error: Error | null; resetErro
         Encontramos um erro inesperado. Por favor, tente novamente ou entre em contato com o suporte se o problema persistir.
       </p>
       
-      {process.env.NODE_ENV === 'development' && error && (
+      {(import.meta as any)?.env?.DEV && error && (
         <details style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
           <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '0.5rem' }}>
             Detalhes do erro (apenas em desenvolvimento)
@@ -124,7 +125,7 @@ class ErrorBoundary extends Component<Props, State> {
    */
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
+    if ((import.meta as any)?.env?.DEV) {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
 
@@ -133,13 +134,11 @@ class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     });
 
-    // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
 
-    // TODO: Send error to logging service (e.g., Sentry, LogRocket)
-    // Example: logErrorToService(error, errorInfo);
+    Sentry.captureException(error, { extra: { errorInfo } });
   }
 
   /**

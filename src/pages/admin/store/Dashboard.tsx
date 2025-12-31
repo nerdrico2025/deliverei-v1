@@ -54,7 +54,7 @@ export default function StoreDashboard() {
       await navigator.clipboard.writeText(url);
       push({ message: "Link copiado!", tone: "success" });
     } catch {
-      push({ message: "Falha ao copiar link", tone: "danger" });
+      push({ message: "Falha ao copiar link", tone: "error" });
     }
   };
   
@@ -83,12 +83,20 @@ export default function StoreDashboard() {
       setOrdersLoading(true);
       setSalesError(null);
 
+      const withRetry = async <T,>(f: () => Promise<T>): Promise<T> => {
+        try {
+          return await f();
+        } catch (e) {
+          await new Promise((r) => setTimeout(r, 600));
+          return await f();
+        }
+      };
+
       try {
-        // Sales chart for selected range
-        const data = await dashboardApi.getGraficoVendasCustom(
+        const data = await withRetry(() => dashboardApi.getGraficoVendasCustom(
           dateRange.startDate,
           dateRange.endDate
-        );
+        ));
         setSalesData(data);
       } catch (error) {
         console.error('Error fetching sales data:', error);
@@ -99,8 +107,7 @@ export default function StoreDashboard() {
       }
 
       try {
-        // Stats for selected range
-        const stats = await dashboardApi.getEstatisticas(dateRange.startDate, dateRange.endDate);
+        const stats = await withRetry(() => dashboardApi.getEstatisticas(dateRange.startDate, dateRange.endDate));
         setDashboardStats(stats);
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -110,8 +117,7 @@ export default function StoreDashboard() {
       }
 
       try {
-        // Low stock from products
-        const prods = await getProducts({ limit: 100 });
+        const prods = await withRetry(() => getProducts({ limit: 100 }));
         const low = (prods?.data || []).filter((p) => Number(p.estoque ?? 0) <= 3).length;
         setLowStockCount(low);
       } catch (error) {
@@ -209,7 +215,7 @@ export default function StoreDashboard() {
       <div className="mt-6 rounded-lg border border-[#E5E7EB] bg-white">
         <div className="flex items-center justify-between border-b border-[#E5E7EB] p-4">
           <h2 className="text-lg font-semibold text-[#111827]">Vendas no período</h2>
-          {salesLoading && <Loading label="Carregando gráfico..." />}
+          {salesLoading && <Loading message="Carregando gráfico..." />}
         </div>
         <div className="p-4">
           {salesError ? (
@@ -224,7 +230,7 @@ export default function StoreDashboard() {
       <div className="mt-6 rounded-lg border border-[#E5E7EB] bg-white">
         <div className="flex items-center justify-between border-b border-[#E5E7EB] p-4">
           <h2 className="text-lg font-semibold text-[#111827]">Pedidos recentes</h2>
-          {ordersLoading && <Loading label="Carregando pedidos..." />}
+          {ordersLoading && <Loading message="Carregando pedidos..." />}
         </div>
         <div className="p-4">
           <div className="space-y-4">

@@ -17,7 +17,7 @@ const isDev = Boolean((import.meta as any)?.env?.DEV);
 // Criar instância do axios
 const apiClient = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -66,13 +66,8 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Se receber 401, tratar conforme ambiente
+    // Se receber 401, tentar refresh e, caso falhe ou não haja token, redirecionar ao login
     if (error.response?.status === 401) {
-      // Em desenvolvimento, não forçar logout automático para evitar bounce
-      if (isDev) {
-        return Promise.reject(error);
-      }
-
       const hasRealToken = !!localStorage.getItem('deliverei_token');
       const refreshToken = localStorage.getItem('deliverei_refresh_token');
 
@@ -115,7 +110,7 @@ apiClient.interceptors.response.use(
           window.location.href = '/login';
         }
       } else {
-        // Sem token real, forçar logout
+        // Sem token real, forçar logout e redirecionar
         localStorage.removeItem('deliverei_token');
         localStorage.removeItem('deliverei_refresh_token');
         localStorage.removeItem('deliverei_auth');
@@ -124,6 +119,9 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('deliverei_tenant_slug');
         window.location.href = '/login';
       }
+
+      // Em desenvolvimento, mantenha a rejeição para os componentes exibirem estados de erro
+      return Promise.reject(error);
     }
 
     throw error;

@@ -47,6 +47,51 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// Normaliza qualquer payload de produto para a forma esperada pelo frontend
+const normalizeProduct = (p: any): Product => ({
+  id: p.id,
+  nome: p.nome,
+  descricao: p.descricao,
+  preco: Number(p.preco ?? 0),
+  preco_riscado:
+    p.preco_riscado !== undefined && p.preco_riscado !== null
+      ? Number(p.preco_riscado)
+      : undefined,
+  imagem: p.imagem ?? p.imagemUrl,
+  ativo: typeof p.ativo === 'boolean' ? p.ativo : !!p.disponivel,
+  estoque: typeof p.estoque === 'number' ? p.estoque : 0,
+  categoria: p.categoria,
+  empresaId: p.empresaId,
+  createdAt: p.criadoEm || p.createdAt || new Date().toISOString(),
+  updatedAt: p.atualizadoEm || p.updatedAt || new Date().toISOString(),
+  promo_tag: !!p.promo_tag,
+  bestseller_tag: !!p.bestseller_tag,
+  new_tag: !!p.new_tag,
+});
+
+// Mapeia payload para compatibilidade com backend real e mock-backend
+const toBackendPayload = (data: Partial<CreateProductDto>): any => {
+  const payload: any = {};
+
+  if (data.nome !== undefined) payload.nome = data.nome;
+  if (data.descricao !== undefined) payload.descricao = data.descricao;
+  if (data.preco !== undefined) payload.preco = data.preco;
+  if (data.preco_riscado !== undefined) payload.preco_riscado = data.preco_riscado;
+  if (data.imagem !== undefined) {
+    payload.imagem = data.imagem;
+  }
+  if (data.ativo !== undefined) {
+    payload.ativo = data.ativo;
+  }
+  if (data.estoque !== undefined) payload.estoque = data.estoque;
+  if (data.categoria !== undefined) payload.categoria = data.categoria;
+  if (data.promo_tag !== undefined) payload.promo_tag = data.promo_tag;
+  if (data.bestseller_tag !== undefined) payload.bestseller_tag = data.bestseller_tag;
+  if (data.new_tag !== undefined) payload.new_tag = data.new_tag;
+
+  return payload;
+};
+
 /**
  * Fetch all products with pagination and filters
  */
@@ -57,32 +102,13 @@ export const getProducts = async (params?: {
   search?: string;
   ativo?: boolean;
 }): Promise<PaginatedResponse<Product>> => {
-  // Helper para normalizar itens para Product
-  const normalize = (p: any): Product => ({
-    id: p.id,
-    nome: p.nome,
-    descricao: p.descricao,
-    preco: Number(p.preco ?? 0),
-    preco_riscado: p.preco_riscado !== undefined && p.preco_riscado !== null ? Number(p.preco_riscado) : undefined,
-    imagem: p.imagem ?? p.imagemUrl,
-    ativo: typeof p.ativo === 'boolean' ? p.ativo : !!p.disponivel,
-    estoque: typeof p.estoque === 'number' ? p.estoque : 0,
-    categoria: p.categoria,
-    empresaId: p.empresaId,
-    createdAt: p.criadoEm || p.createdAt || new Date().toISOString(),
-    updatedAt: p.atualizadoEm || p.updatedAt || new Date().toISOString(),
-    promo_tag: !!p.promo_tag,
-    bestseller_tag: !!p.bestseller_tag,
-    new_tag: !!p.new_tag,
-  });
-
   try {
     const response = await apiClient.get('/produtos', { params });
     const payload = response.data;
 
     // Caso mock-backend retorne array simples
     if (Array.isArray(payload)) {
-      const normalized = payload.map(normalize);
+      const normalized = payload.map(normalizeProduct);
       return {
         data: normalized,
         meta: {
@@ -97,7 +123,7 @@ export const getProducts = async (params?: {
     // Caso backend real retorne PaginatedResponse
     if (payload && Array.isArray(payload.data)) {
       return {
-        data: payload.data.map(normalize),
+        data: payload.data.map(normalizeProduct),
         meta: payload.meta ?? {
           total: payload.total ?? payload.data.length,
           page: params?.page ?? 1,
@@ -108,7 +134,7 @@ export const getProducts = async (params?: {
     }
 
     // Fallback: payload único ou formato inesperado
-    const normalized = Array.isArray(payload) ? payload.map(normalize) : [normalize(payload)];
+    const normalized = Array.isArray(payload) ? payload.map(normalizeProduct) : [normalizeProduct(payload)];
     return {
       data: normalized,
       meta: {
@@ -128,15 +154,16 @@ export const getProducts = async (params?: {
  */
 export const getProduct = async (id: string): Promise<Product> => {
   const response = await apiClient.get<Product>(`/produtos/${id}`);
-  return response.data;
+  return normalizeProduct(response.data);
 };
 
 /**
  * Create a new product
  */
 export const createProduct = async (data: CreateProductDto): Promise<Product> => {
-  const response = await apiClient.post<Product>('/produtos', data);
-  return response.data;
+  const payload = toBackendPayload(data);
+  const response = await apiClient.post<Product>('/produtos', payload);
+  return normalizeProduct(response.data);
 };
 
 /**
@@ -146,8 +173,9 @@ export const updateProduct = async (
   id: string,
   data: UpdateProductDto
 ): Promise<Product> => {
-  const response = await apiClient.patch<Product>(`/produtos/${id}`, data);
-  return response.data;
+  const payload = toBackendPayload(data);
+  const response = await apiClient.patch<Product>(`/produtos/${id}`, payload);
+  return normalizeProduct(response.data);
 };
 
 /**

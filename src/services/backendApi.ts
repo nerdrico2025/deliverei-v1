@@ -1,5 +1,25 @@
 
 import apiClient from './apiClient';
+import { storefrontSupabase } from './storefrontSupabase';
+const lsGet = <T,>(key: string): T | null => {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+};
+const lsSet = <T,>(key: string, val: T): void => {
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(key, JSON.stringify(val));
+    }
+  } catch {}
+};
+const kInfo = (slug: string) => `storefront_info_${slug}`;
+const kProdutos = (slug: string) => `storefront_produtos_${slug}`;
+const kCategorias = (slug: string) => `storefront_categorias_${slug}`;
 
 export interface LoginRequest {
   email: string;
@@ -390,7 +410,7 @@ const carrinhoApi = {
   },
   
   checkout: async (data: CheckoutRequest): Promise<CheckoutResponse> => {
-    const res = await apiClient.post('/checkout', data);
+    const res = await apiClient.post('/carrinho/checkout', data);
     return res.data;
   },
 };
@@ -483,6 +503,12 @@ const pagamentosApi = {
     const res = await apiClient.get(`/pagamentos/${id}`);
     return res.data;
   },
+  testarAsaas: async (token: string): Promise<{ ok: boolean; sample?: any }> => {
+    const res = await apiClient.post('/pagamentos/asaas/testar', null, {
+      headers: { 'X-Asaas-Token': token },
+    });
+    return res.data;
+  },
 };
 
 const whatsappApi = {
@@ -504,25 +530,59 @@ const webhooksApi = {
   },
 };
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+async function withBackoff<T>(fn: () => Promise<T>, attempts = 4, baseMs = 800): Promise<T> {
+  let lastErr: any;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) {
+        const wait = baseMs * Math.pow(2, i);
+        await sleep(wait);
+        continue;
+      }
+    }
+  }
+  throw lastErr;
+}
+
 const storefrontApi = {
-  getLojaInfo: async (slug: string): Promise<{ id: string; nome: string; slug: string; subdominio?: string }> => {
-    const res = await apiClient.get(`/public/${slug}/info`);
+  getLojaInfo: storefrontSupabase.getLojaInfo,
+  getTheme: storefrontSupabase.getTheme,
+  getProdutos: storefrontSupabase.getProdutos,
+  getProduto: storefrontSupabase.getProduto,
+  getCategorias: storefrontSupabase.getCategorias,
+};
+
+const categoriasApi = {
+  listar: async (): Promise<string[]> => {
+    const res = await apiClient.get('/v1/categorias');
     return res.data;
   },
-  getProdutos: async (
-    slug: string,
-    params?: { page?: number; limit?: number; categoria?: string; search?: string }
-  ): Promise<Produto[]> => {
-    const res = await apiClient.get(`/public/${slug}/produtos`, { params });
-    // Public endpoint returns a paginated wrapper { data: Produto[], meta: {...} }
-    return (res.data?.data ?? res.data);
-  },
-  getProduto: async (slug: string, id: string): Promise<Produto> => {
-    const res = await apiClient.get(`/public/${slug}/produtos/${id}`);
+  adicionar: async (nome: string): Promise<{ sucesso: boolean; mensagem?: string }> => {
+    const res = await apiClient.post('/v1/categorias', { nome });
     return res.data;
   },
-  getCategorias: async (slug: string): Promise<string[]> => {
-    const res = await apiClient.get(`/public/${slug}/categorias`);
+};
+
+// Admin Theme API (persist theme for current company)
+export interface StorefrontThemeSettingsPayload {
+  backgroundImage?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor?: string;
+  updatedAt: number;
+}
+
+const themeApi = {
+  get: async (): Promise<{ settings: StorefrontThemeSettingsPayload | null }> => {
+    const res = await apiClient.get('/v1/theme');
+    return res.data;
+  },
+  update: async (settings: StorefrontThemeSettingsPayload): Promise<{ sucesso: boolean; settings: StorefrontThemeSettingsPayload; mensagem?: string }> => {
+    const res = await apiClient.put('/v1/theme', settings);
     return res.data;
   },
 };
@@ -584,6 +644,12 @@ const domainApi = {
   },
 };
 
+const storageApi = {
+  ensureBucket: async (name?: string): Promise<{ ok: boolean; bucket: string }> => {
+    const res = await apiClient.post('/v1/storage/ensure-bucket', { name });
+    return res.data;
+  },
+};
 export const backendApi = {
   auth: authApi,
   produtos: produtosApi,
@@ -598,8 +664,11 @@ export const backendApi = {
   whatsapp: whatsappApi,
   webhooks: webhooksApi,
   storefront: storefrontApi,
+  theme: themeApi,
   companies: companiesApi,
   domain: domainApi,
+  storage: storageApi,
+  categorias: categoriasApi,
 };
 
-export { carrinhoApi, authApi, produtosApi, cuponsApi, avaliacoesApi, notificacoesApi, pedidosApi, dashboardApi, assinaturasApi, pagamentosApi, whatsappApi, webhooksApi, storefrontApi, companiesApi, domainApi };
+export { carrinhoApi, authApi, produtosApi, cuponsApi, avaliacoesApi, notificacoesApi, pedidosApi, dashboardApi, assinaturasApi, pagamentosApi, whatsappApi, webhooksApi, storefrontApi, themeApi, companiesApi, domainApi, categoriasApi, storageApi };

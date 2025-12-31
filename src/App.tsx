@@ -6,6 +6,7 @@ import AppRouter from './routes/AppRouter';
 import { ClientAuthProvider } from './contexts/ClientAuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { resolveTenantSlug, persistTenantSlug } from './services/api.utils';
+import ErrorBoundary from './components/util/ErrorBoundary';
 
 function App() {
   // Inicializar e persistir slug multi-tenant no startup
@@ -22,7 +23,9 @@ function App() {
           <ClientAuthProvider>
             <CartProvider>
               <div className="min-h-screen bg-gray-50">
-                <AppRouter />
+                <ErrorBoundary>
+                  <AppRouter />
+                </ErrorBoundary>
               </div>
             </CartProvider>
           </ClientAuthProvider>

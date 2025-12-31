@@ -1,0 +1,108 @@
+import { CuponsService } from './cupons.service';
+import { CreateCupomDto } from './dto/create-cupom.dto';
+import { UpdateCupomDto } from './dto/update-cupom.dto';
+import { ValidarCupomDto } from './dto/validar-cupom.dto';
+export declare class CuponsController {
+    private readonly cuponsService;
+    constructor(cuponsService: CuponsService);
+    create(createCupomDto: CreateCupomDto, req: any): Promise<{
+        id: string;
+        codigo: string;
+        descricao: string;
+        tipo: string;
+        valor: number;
+        valorMinimo: number | null;
+        dataInicio: Date;
+        dataFim: Date;
+        ativo: boolean;
+        usoMaximo: number | null;
+        usoAtual: number;
+        empresaId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    findAll(req: any): Promise<{
+        id: string;
+        codigo: string;
+        descricao: string;
+        tipo: string;
+        valor: number;
+        valorMinimo: number | null;
+        dataInicio: Date;
+        dataFim: Date;
+        ativo: boolean;
+        usoMaximo: number | null;
+        usoAtual: number;
+        empresaId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }[]>;
+    findOne(id: string, req: any): Promise<{
+        id: string;
+        codigo: string;
+        descricao: string;
+        tipo: string;
+        valor: number;
+        valorMinimo: number | null;
+        dataInicio: Date;
+        dataFim: Date;
+        ativo: boolean;
+        usoMaximo: number | null;
+        usoAtual: number;
+        empresaId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    update(id: string, updateCupomDto: UpdateCupomDto, req: any): Promise<{
+        id: string;
+        codigo: string;
+        descricao: string;
+        tipo: string;
+        valor: number;
+        valorMinimo: number | null;
+        dataInicio: Date;
+        dataFim: Date;
+        ativo: boolean;
+        usoMaximo: number | null;
+        usoAtual: number;
+        empresaId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    remove(id: string, req: any): Promise<{
+        id: string;
+        codigo: string;
+        descricao: string;
+        tipo: string;
+        valor: number;
+        valorMinimo: number | null;
+        dataInicio: Date;
+        dataFim: Date;
+        ativo: boolean;
+        usoMaximo: number | null;
+        usoAtual: number;
+        empresaId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    validar(validarCupomDto: ValidarCupomDto, req: any): Promise<{
+        cupom: {
+            id: string;
+            codigo: string;
+            descricao: string;
+            tipo: string;
+            valor: number;
+            valorMinimo: number | null;
+            dataInicio: Date;
+            dataFim: Date;
+            ativo: boolean;
+            usoMaximo: number | null;
+            usoAtual: number;
+            empresaId: string;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        desconto: number;
+        valorFinal: number;
+    }>;
+}

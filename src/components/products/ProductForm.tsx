@@ -5,7 +5,7 @@ import { ImageUpload } from '../common/ImageUpload';
 import { resolveTenantSlug } from '../../services/api.utils';
 import { storefrontApi } from '../../services/backendApi';
 import { Tag as TagIcon, Crown, Sparkles } from 'lucide-react';
-import { parseBRNumber } from '../../utils/formatters';
+import { parseBRNumber as parseBRNumberUtil } from '../../utils/formatters';
 
 export interface ProductFormData {
   nome: string;
@@ -44,13 +44,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   submitLabel = 'Salvar',
   isLoading = false,
 }) => {
-  // Helper: parse número com vírgula decimal (pt-BR)
-  const parseBRNumber = (input: string): number => {
-    const s = String(input || '')
-      .replace(/\./g, '')
-      .replace(',', '.');
-    const n = parseFloat(s);
-    return Number.isNaN(n) ? 0 : n;
+  const formatToBRString = (n: number | undefined | null): string => {
+    if (n === undefined || n === null) return '';
+    try {
+      return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch {
+      return String(n);
+    }
   };
   
   
@@ -67,6 +67,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     bestseller_tag: initialData?.bestseller_tag ?? false,
     new_tag: initialData?.new_tag ?? false,
   });
+  const [precoStr, setPrecoStr] = useState<string>(
+    initialData?.preco !== undefined && initialData?.preco !== null
+      ? formatToBRString(initialData?.preco)
+      : ''
+  );
+  const [precoRiscadoStr, setPrecoRiscadoStr] = useState<string>(
+    initialData?.preco_riscado !== undefined && initialData?.preco_riscado !== null
+      ? formatToBRString(initialData?.preco_riscado)
+      : ''
+  );
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
@@ -135,8 +145,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       return;
     }
 
+    const precoParsed = parseBRNumberUtil(precoStr);
+    const precoRiscadoParsed = precoRiscadoStr ? parseBRNumberUtil(precoRiscadoStr) : undefined;
     const data: ProductFormData = {
       ...formData,
+      preco: precoParsed,
+      preco_riscado: precoRiscadoParsed,
       categoria: formData.categoria?.trim() ? formData.categoria.trim() : undefined,
     };
 
@@ -155,7 +169,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     setCategoryError('');
   };
 
-  const confirmAddCategory = () => {
+  const confirmAddCategory = async () => {
     const val = newCategory.trim();
     if (!val) {
       setCategoryError('Informe o nome da categoria');
@@ -165,6 +179,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       setCategoryOptions((prev) => [...prev, val]);
     }
     handleChange('categoria', val);
+    try {
+      const { categoriasApi } = await import('../../services/backendApi');
+      await categoriasApi.adicionar(val);
+    } catch {}
     setAddingCategory(false);
   };
 
@@ -215,14 +233,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   Preço (R$) <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="29,90"
-                  value={formData.preco}
-                  onChange={(e) =>
-                    handleChange('preco', parseBRNumber(e.target.value))
-                  }
+                  value={precoStr}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const sanitized = raw.replace(/[^\d.,]/g, '');
+                    setPrecoStr(sanitized);
+                    const parsed = parseBRNumberUtil(sanitized);
+                    setFormData((prev) => ({ ...prev, preco: parsed }));
+                  }}
                   disabled={isLoading}
                   className={errors.preco ? 'border-red-500' : ''}
                 />
@@ -236,17 +257,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   Preço riscado (R$)
                 </label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="39,90"
-                  value={formData.preco_riscado ?? ''}
-                  onChange={(e) =>
-                    handleChange(
-                      'preco_riscado',
-                      e.target.value === '' ? undefined : parseBRNumber(e.target.value)
-                    )
-                  }
+                  value={precoRiscadoStr}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const sanitized = raw.replace(/[^\d.,]/g, '');
+                    setPrecoRiscadoStr(sanitized);
+                    const parsed = sanitized ? parseBRNumberUtil(sanitized) : undefined;
+                    setFormData((prev) => ({ ...prev, preco_riscado: parsed }));
+                  }}
                   disabled={isLoading}
                   className={errors.preco_riscado ? 'border-red-500' : ''}
                 />
@@ -296,7 +317,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                     )}
                     <div className="mt-2 flex items-center gap-2">
                       <Button type="button" onClick={confirmAddCategory} variant="primary" size="sm">Salvar</Button>
-                      <Button type="button" onClick={cancelAddingCategory} variant="ghost" size="sm">Cancelar</Button>
+                      <Button type="button" onClick={cancelAddingCategory} variant="outline" size="sm">Cancelar</Button>
                     </div>
                   </div>
                 )}
@@ -395,7 +416,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? 'Salvando...' : submitLabel}
               </Button>
