@@ -1,44 +1,56 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import { createClient } from '@supabase/supabase-js';
 
-export default defineConfig({
-  server: { host: true, port: 5173 },
-  plugins: [
-    {
-      name: 'dev-supabase-proxy',
-      configureServer(server) {
-        const enable = process.env.VITE_SUPABASE_DEV_PROXY === 'true';
-        const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-        const supabaseAnon = process.env.VITE_SUPABASE_ANON_KEY || '';
-        let supabase: any = null;
-        if (enable && supabaseUrl && supabaseAnon) {
-          const { createClient } = require('@supabase/supabase-js');
-          supabase = createClient(supabaseUrl, supabaseAnon);
-        }
-        server.middlewares.use(async (req, res, next) => {
-          try {
-            if (!enable || !supabase) return next();
-            const u = new URL(req.url || '', 'http://localhost');
-            if (u.pathname === '/dev-storefront/info') {
-              const slug = String(u.searchParams.get('slug') || '').trim();
-              let row = null;
-              if (slug) {
-                const a = await supabase.from('empresas').select('*').eq('subdominio', slug).limit(1).maybeSingle();
-                row = a.data || null;
-                if (!row) {
-                  const b = await supabase.from('empresas').select('*').eq('slug', slug).limit(1).maybeSingle();
-                  row = b.data || null;
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const enable = env.VITE_SUPABASE_DEV_PROXY === 'true';
+  const supabaseUrl = env.VITE_SUPABASE_URL || '';
+  const supabaseAnon = env.VITE_SUPABASE_ANON_KEY || '';
+  let supabase: any = null;
+  if (enable && supabaseUrl && supabaseAnon) {
+    supabase = createClient(supabaseUrl, supabaseAnon);
+  }
+  return {
+    server: { host: true, port: 5173 },
+    plugins: [
+      {
+        name: 'dev-supabase-proxy',
+        configureServer(server) {
+          server.middlewares.use(async (req, res, next) => {
+            try {
+              if (!enable || !supabase) return next();
+              const u = new URL(req.url || '', 'http://localhost');
+              if (u.pathname === '/dev-storefront/info') {
+                const slug = String(u.searchParams.get('slug') || '').trim();
+                let row = null;
+                if (slug) {
+                  const a = await supabase.from('empresas').select('*').eq('subdominio', slug).limit(1).maybeSingle();
+                  row = a.data || null;
+                  if (!row) {
+                    const b = await supabase.from('empresas').select('*').eq('slug', slug).limit(1).maybeSingle();
+                    row = b.data || null;
+                  }
+                  if (!row) {
+                    const likeA = `%${slug}%`;
+                    const likeB = `%${slug.replace(/-/g, ' ')}%`;
+                    const c = await supabase.from('empresas').select('*').ilike('nome', likeA).limit(1).maybeSingle();
+                    row = c.data || null;
+                    if (!row) {
+                      const d = await supabase.from('empresas').select('*').ilike('nome', likeB).limit(1).maybeSingle();
+                      row = d.data || null;
+                    }
+                  }
                 }
-              }
-              if (!row) {
-                res.statusCode = 404;
+                if (!row) {
+                  res.statusCode = 404;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ message: 'Loja não encontrada' }));
+                  return;
+                }
                 res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ message: 'Loja não encontrada' }));
+                res.end(JSON.stringify({ id: row.id, nome: row.nome, slug: row.slug, subdominio: row.subdominio }));
                 return;
               }
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ id: row.id, nome: row.nome, slug: row.slug, subdominio: row.subdominio }));
-              return;
-            }
             if (u.pathname === '/dev-storefront/produtos') {
               const slug = String(u.searchParams.get('slug') || '').trim();
               const page = Number(u.searchParams.get('page') || '1');
@@ -55,11 +67,33 @@ export default defineConfig({
               }
               const from = (page - 1) * limit;
               const to = from + limit - 1;
-              let q = supabase.from('produtos').select('*').eq('empresaId', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to);
+              const attempts = [
+                supabase.from('produtos').select('*').eq('empresaId', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
+                supabase.from('produtos').select('*').eq('empresa_id', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
+                supabase.from('produtos').select('*').eq('empresaid', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
+              ];
+              if (categoria) {
+                attempts.unshift(
+                  supabase.from('produtos').select('*').eq('empresaId', empresa.id).eq('ativo', true).eq('categoria', categoria).order('nome', { ascending: true }).range(from, to)
+                );
+              }
+              let base: any[] = [];
+              for (const q of attempts) {
+                const { data, error } = await q;
+                if (!error && Array.isArray(data) && data.length > 0) { base = data; break; }
+              }
+              if (base.length === 0) {
+                const { data, error } = await supabase.from('produtos').select('*').eq('ativo', true).order('nome', { ascending: true }).limit(1000);
+                if (!error && Array.isArray(data)) {
+                  base = data.filter((p: any) => {
+                    const eid = p?.empresaId ?? p?.empresa_id ?? p?.company_id;
+                    const cat = p?.categoria;
+                    if (categoria && cat !== categoria) return false;
+                    return String(eid || '') === String(empresa.id);
+                  });
+                }
+              }
               const term = String(search || '').trim();
-              if (categoria) q = q.eq('categoria', categoria);
-              const { data } = await q;
-              let base = Array.isArray(data) ? data : [];
               if (term) {
                 const s = term.toLowerCase();
                 base = base.filter((p: any) => {
@@ -127,8 +161,9 @@ export default defineConfig({
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ message: 'Proxy error' }));
           }
-        });
+          });
+        },
       },
-    },
-  ],
+    ],
+  };
 });
