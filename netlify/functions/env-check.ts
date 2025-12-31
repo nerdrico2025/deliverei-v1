@@ -23,16 +23,17 @@ export const handler: Handler = async () => {
         return '';
       }
     })();
+    const isJwt = anon.includes('.') && anon.split('.').length === 3;
+    const isPublishable = anon.startsWith('sb_');
     let connectOk = false;
     let status = 0;
     if (url && hasAnon) {
       try {
-        const r = await fetch(`${url}/rest/v1/empresas?select=id&limit=1`, {
-          headers: {
-            apikey: anon,
-            Authorization: `Bearer ${anon}`,
-          },
-        });
+        const headers: Record<string, string> = { apikey: anon };
+        if (isJwt && !isPublishable) {
+          headers.Authorization = `Bearer ${anon}`;
+        }
+        const r = await fetch(`${url}/rest/v1/empresas?select=id&limit=1`, { headers });
         status = r.status;
         connectOk = r.ok;
       } catch {}
