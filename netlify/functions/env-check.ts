@@ -2,8 +2,18 @@ type Handler = (event: any) => Promise<{ statusCode: number; headers?: Record<st
 
 export const handler: Handler = async () => {
   try {
-    const url = String(process.env.SUPABASE_URL || '');
-    const anon = String(process.env.SUPABASE_ANON_KEY || '');
+    const url = String(
+      process.env.SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      ''
+    );
+    const anon = String(
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      ''
+    );
     const hasAnon = anon.length > 0;
     const host = (() => {
       try {
@@ -31,4 +41,3 @@ export const handler: Handler = async () => {
     return { statusCode: 500, body: JSON.stringify({ ok: false }) };
   }
 };
-
