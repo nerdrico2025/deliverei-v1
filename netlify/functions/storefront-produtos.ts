@@ -49,6 +49,7 @@ export const handler: Handler = async (event) => {
       const attempts = [
         supabase.from(tp).select('*').eq('empresaId', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
         supabase.from(tp).select('*').eq('empresa_id', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
+        supabase.from(tp).select('*').eq('empresaid', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
         supabase.from(tp).select('*').eq('company_id', empresa.id).eq('active', true).order('name', { ascending: true }).range(from, to),
       ];
       if (categoria) {

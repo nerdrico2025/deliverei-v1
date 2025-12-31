@@ -49,8 +49,10 @@ export const handler: Handler = async (event) => {
     for (const tc of tCat) {
       const r = await supabase.from(tc).select('nome,name').eq('empresaId', empresa.id);
       if (!r.error && Array.isArray(r.data) && r.data.length > 0) { catTable = r.data as any[]; break; }
-      const r2 = await supabase.from(tc).select('nome,name').eq('company_id', empresa.id);
+      const r2 = await supabase.from(tc).select('nome,name').eq('empresaid', empresa.id);
       if (!r2.error && Array.isArray(r2.data) && r2.data.length > 0) { catTable = r2.data as any[]; break; }
+      const r3 = await supabase.from(tc).select('nome,name').eq('company_id', empresa.id);
+      if (!r3.error && Array.isArray(r3.data) && r3.data.length > 0) { catTable = r3.data as any[]; break; }
     }
     const set = new Set<string>();
     (Array.isArray(catProd) ? catProd : []).forEach((c: any) => {
