@@ -27,7 +27,12 @@ export const handler: Handler = async () => {
     let status = 0;
     if (url && hasAnon) {
       try {
-        const r = await fetch(`${url}/rest/v1/empresas?select=id&limit=1`, { headers: { apikey: anon } });
+        const r = await fetch(`${url}/rest/v1/empresas?select=id&limit=1`, {
+          headers: {
+            apikey: anon,
+            Authorization: `Bearer ${anon}`,
+          },
+        });
         status = r.status;
         connectOk = r.ok;
       } catch {}
