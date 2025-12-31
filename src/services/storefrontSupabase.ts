@@ -88,9 +88,13 @@ export const storefrontSupabase = {
   async getLojaInfo(slug: string): Promise<{ id: string; nome: string; slug: string; subdominio?: string | null }> {
     if (useDevProxy()) {
       const res = await fetch(`/dev-storefront/info?slug=${encodeURIComponent(slug)}`);
-      if (!res.ok) throw new Error('Loja não encontrada');
-      const empresa = await res.json();
-      return empresa;
+      if (res.ok) {
+        const empresa = await res.json();
+        return empresa;
+      }
+      const fb = FALLBACK_COMPANIES[normalizeSlug(slug)];
+      if (fb) return fb;
+      throw new Error('Loja não encontrada');
     }
     // Netlify Functions fallback in non-local environments
     if ((import.meta as any)?.env?.VITE_USE_NETLIFY_FUNCTIONS === 'true') {
@@ -98,9 +102,19 @@ export const storefrontSupabase = {
       if (!res.ok) throw new Error('Loja não encontrada');
       return await res.json();
     }
-    const empresa = (await getEmpresaBySlug(slug)) ?? FALLBACK_COMPANIES[normalizeSlug(slug)];
-    if (!empresa) throw new Error('Loja não encontrada');
-    return empresa;
+    try {
+      const empresa = (await getEmpresaBySlug(slug)) ?? FALLBACK_COMPANIES[normalizeSlug(slug)];
+      if (!empresa) throw new Error('Loja não encontrada');
+      return empresa;
+    } catch (e) {
+      try {
+        const res = await fetch(`/.netlify/functions/storefront-info?slug=${encodeURIComponent(slug)}`);
+        if (!res.ok) throw new Error('Loja não encontrada');
+        return await res.json();
+      } catch {
+        throw e;
+      }
+    }
   },
   async getTheme(slug: string): Promise<{ settings: ThemeSettings | null }> {
     if (useDevProxy()) return { settings: null };
@@ -154,61 +168,78 @@ export const storefrontSupabase = {
       const list = await res.json();
       return (list || []);
     }
-    const empresa = (await getEmpresaBySlug(slug)) ?? FALLBACK_COMPANIES[normalizeSlug(slug)];
-    if (!empresa) throw new Error('Loja não encontrada');
-    const page = params?.page ?? 1;
-    const limit = params?.limit ?? 20;
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-    // Tentativas robustas com variações de coluna e status
-    const attempts = [
-      () => supabase.from('produtos').select('*').eq('empresaId', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
-      () => supabase.from('produtos').select('*').eq('empresaId', empresa.id).order('nome', { ascending: true }).range(from, to),
-      () => supabase.from('produtos').select('*').eq('empresa_id', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
-      () => supabase.from('produtos').select('*').eq('empresaid', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
-    ];
-    let base: any[] = [];
-    for (const fn of attempts) {
-      const { data, error } = await fn();
-      if (!error && Array.isArray(data) && data.length > 0) {
-        base = data;
-        break;
+    try {
+      const empresa = (await getEmpresaBySlug(slug)) ?? FALLBACK_COMPANIES[normalizeSlug(slug)];
+      if (!empresa) throw new Error('Loja não encontrada');
+      const page = params?.page ?? 1;
+      const limit = params?.limit ?? 20;
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+      // Tentativas robustas com variações de coluna e status
+      const attempts = [
+        () => supabase.from('produtos').select('*').eq('empresaId', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
+        () => supabase.from('produtos').select('*').eq('empresaId', empresa.id).order('nome', { ascending: true }).range(from, to),
+        () => supabase.from('produtos').select('*').eq('empresa_id', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
+        () => supabase.from('produtos').select('*').eq('empresaid', empresa.id).eq('ativo', true).order('nome', { ascending: true }).range(from, to),
+      ];
+      let base: any[] = [];
+      for (const fn of attempts) {
+        const { data, error } = await fn();
+        if (!error && Array.isArray(data) && data.length > 0) {
+          base = data;
+          break;
+        }
+      }
+      if (base.length === 0) {
+        const { data, error } = await supabase.from('produtos').select('*').eq('ativo', true).order('nome', { ascending: true }).limit(1000);
+        if (!error && Array.isArray(data)) {
+          base = data.filter((p: any) => {
+            const eid = p?.empresaId ?? p?.empresa_id ?? p?.company_id;
+            return String(eid || '') === String(empresa.id);
+          });
+        }
+      }
+      const filtered = base.filter((p: any) => {
+        const cat = (p.categoria ?? p.category ?? '').toString();
+        if (params?.categoria && cat !== params.categoria) return false;
+        if (params?.search && params.search.trim().length > 0) {
+          const s = params.search.trim().toLowerCase();
+          const nome = (p.nome ?? p.name ?? '').toString().toLowerCase();
+          const desc = (p.descricao ?? p.description ?? '').toString().toLowerCase();
+          return nome.includes(s) || desc.includes(s);
+        }
+        return true;
+      });
+      return (filtered || []).map((p: any) => ({
+        id: p.id,
+        nome: p.nome ?? p.name,
+        descricao: p.descricao ?? p.description,
+        preco: Number((p.preco ?? p.price) ?? 0),
+        imagemUrl: p.imagemUrl ?? p.imagem ?? p.image_url ?? p.image ?? undefined,
+        categoria: p.categoria ?? p.category ?? undefined,
+        disponivel: (p.ativo ?? p.active ?? true) ? true : false,
+        estoque: typeof (p.estoque ?? p.stock) === 'number' ? (p.estoque ?? p.stock) : undefined,
+        empresaId: p.empresaId ?? p.company_id ?? p.empresa_id,
+        promo_tag: !!p.promo_tag,
+        bestseller_tag: !!p.bestseller_tag,
+        new_tag: !!p.new_tag,
+      }));
+    } catch (e) {
+      try {
+        const qs = new URLSearchParams();
+        if (params?.page) qs.set('page', String(params.page));
+        if (params?.limit) qs.set('limit', String(params.limit));
+        if (params?.categoria) qs.set('categoria', String(params.categoria));
+        if (params?.search) qs.set('search', String(params.search));
+        qs.set('slug', slug);
+        const res = await fetch(`/.netlify/functions/storefront-produtos?${qs.toString()}`);
+        if (!res.ok) return [];
+        const list = await res.json();
+        return (list || []);
+      } catch {
+        throw e;
       }
     }
-    if (base.length === 0) {
-      const { data, error } = await supabase.from('produtos').select('*').eq('ativo', true).order('nome', { ascending: true }).limit(1000);
-      if (!error && Array.isArray(data)) {
-        base = data.filter((p: any) => {
-          const eid = p?.empresaId ?? p?.empresa_id ?? p?.company_id;
-          return String(eid || '') === String(empresa.id);
-        });
-      }
-    }
-    const filtered = base.filter((p: any) => {
-      const cat = (p.categoria ?? p.category ?? '').toString();
-      if (params?.categoria && cat !== params.categoria) return false;
-      if (params?.search && params.search.trim().length > 0) {
-        const s = params.search.trim().toLowerCase();
-        const nome = (p.nome ?? p.name ?? '').toString().toLowerCase();
-        const desc = (p.descricao ?? p.description ?? '').toString().toLowerCase();
-        return nome.includes(s) || desc.includes(s);
-      }
-      return true;
-    });
-    return (filtered || []).map((p: any) => ({
-      id: p.id,
-      nome: p.nome ?? p.name,
-      descricao: p.descricao ?? p.description,
-      preco: Number((p.preco ?? p.price) ?? 0),
-      imagemUrl: p.imagemUrl ?? p.imagem ?? p.image_url ?? p.image ?? undefined,
-      categoria: p.categoria ?? p.category ?? undefined,
-      disponivel: (p.ativo ?? p.active ?? true) ? true : false,
-      estoque: typeof (p.estoque ?? p.stock) === 'number' ? (p.estoque ?? p.stock) : undefined,
-      empresaId: p.empresaId ?? p.company_id ?? p.empresa_id,
-      promo_tag: !!p.promo_tag,
-      bestseller_tag: !!p.bestseller_tag,
-      new_tag: !!p.new_tag,
-    }));
   },
   async getProduto(slug: string, id: string): Promise<Produto> {
     if (useDevProxy()) {
@@ -274,42 +305,53 @@ export const storefrontSupabase = {
       const cats = await res.json();
       return Array.isArray(cats) ? cats : [];
     }
-    const empresa = (await getEmpresaBySlug(slug)) ?? FALLBACK_COMPANIES[normalizeSlug(slug)];
-    if (!empresa) throw new Error('Loja não encontrada');
-    const productsTable = 'produtos';
-    const categoriesTable = 'categorias';
-    let categoriasProdutos: any[] = [];
-    {
-      const attempts = [
-        () => supabase.from(productsTable).select('categoria').eq('empresaId', empresa.id).eq('ativo', true).not('categoria', 'is', null),
-        () => supabase.from(productsTable).select('categoria').eq('empresaId', empresa.id).not('categoria', 'is', null),
-        () => supabase.from(productsTable).select('categoria').eq('empresa_id', empresa.id).eq('ativo', true).not('categoria', 'is', null),
-      ];
-      for (const fn of attempts) {
-        const { data, error } = await fn();
-        if (!error && Array.isArray(data) && data.length > 0) { categoriasProdutos = data; break; }
+    try {
+      const empresa = (await getEmpresaBySlug(slug)) ?? FALLBACK_COMPANIES[normalizeSlug(slug)];
+      if (!empresa) throw new Error('Loja não encontrada');
+      const productsTable = 'produtos';
+      const categoriesTable = 'categorias';
+      let categoriasProdutos: any[] = [];
+      {
+        const attempts = [
+          () => supabase.from(productsTable).select('categoria').eq('empresaId', empresa.id).eq('ativo', true).not('categoria', 'is', null),
+          () => supabase.from(productsTable).select('categoria').eq('empresaId', empresa.id).not('categoria', 'is', null),
+          () => supabase.from(productsTable).select('categoria').eq('empresa_id', empresa.id).eq('ativo', true).not('categoria', 'is', null),
+        ];
+        for (const fn of attempts) {
+          const { data, error } = await fn();
+          if (!error && Array.isArray(data) && data.length > 0) { categoriasProdutos = data; break; }
+        }
+      }
+      let categoriasSalvas: any[] = [];
+      {
+        const attempts = [
+          () => supabase.from(categoriesTable).select('nome').eq('empresaId', empresa.id),
+          () => supabase.from(categoriesTable).select('nome').eq('empresa_id', empresa.id),
+        ];
+        for (const fn of attempts) {
+          const { data, error } = await fn();
+          if (!error && Array.isArray(data) && data.length > 0) { categoriasSalvas = data; break; }
+        }
+      }
+      const set = new Set<string>();
+      (categoriasProdutos || []).forEach((c: any) => {
+        const n = c?.categoria ?? c?.category;
+        if (n) set.add(String(n));
+      });
+      (categoriasSalvas || []).forEach((c: any) => {
+        const n = c?.nome ?? c?.name;
+        if (n) set.add(String(n));
+      });
+      return Array.from(set).sort((a, b) => a.localeCompare(b));
+    } catch (e) {
+      try {
+        const res = await fetch(`/.netlify/functions/storefront-categorias?slug=${encodeURIComponent(slug)}`);
+        if (!res.ok) return [];
+        const cats = await res.json();
+        return Array.isArray(cats) ? cats : [];
+      } catch {
+        throw e;
       }
     }
-    let categoriasSalvas: any[] = [];
-    {
-      const attempts = [
-        () => supabase.from(categoriesTable).select('nome').eq('empresaId', empresa.id),
-        () => supabase.from(categoriesTable).select('nome').eq('empresa_id', empresa.id),
-      ];
-      for (const fn of attempts) {
-        const { data, error } = await fn();
-        if (!error && Array.isArray(data) && data.length > 0) { categoriasSalvas = data; break; }
-      }
-    }
-    const set = new Set<string>();
-    (categoriasProdutos || []).forEach((c: any) => {
-      const n = c?.categoria ?? c?.category;
-      if (n) set.add(String(n));
-    });
-    (categoriasSalvas || []).forEach((c: any) => {
-      const n = c?.nome ?? c?.name;
-      if (n) set.add(String(n));
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
   },
 };
