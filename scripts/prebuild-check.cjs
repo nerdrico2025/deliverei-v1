@@ -39,8 +39,8 @@ if (offenders.length > 0) {
 }
 
 // 2) Warn if Supabase envs are missing
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseAnon = process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const supabaseAnon = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 if (!supabaseUrl || !supabaseAnon) {
   console.warn('[prebuild-check] WARNING: Supabase envs missing at build time (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).');
   console.warn('[prebuild-check] The storefront may not load products in production without these.');
