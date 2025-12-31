@@ -15,6 +15,9 @@ interface StorefrontHeaderProps {
     email: string;
   };
   storeSlug?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
 }
 
 export const StorefrontHeader = ({
@@ -26,7 +29,10 @@ export const StorefrontHeader = ({
   logoUrl,
   isAuthenticated = false,
   cliente,
-  storeSlug = "loja"
+  storeSlug = "loja",
+  primaryColor = "#D22630",
+  secondaryColor = "#FFC107",
+  accentColor = "#0EA5E9"
 }: StorefrontHeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -67,9 +73,9 @@ export const StorefrontHeader = ({
           {logoUrl ? (
             <img src={logoUrl} className="h-8 w-8 rounded object-cover" alt={storeName} />
           ) : (
-            <div className="h-8 w-8 rounded bg-[#D22630]" />
+            <div className="h-8 w-8 rounded" style={{ backgroundColor: primaryColor }} />
           )}
-          <span className="font-bold text-[#D22630]">{storeName}</span>
+          <span className="font-bold" style={{ color: primaryColor }}>{storeName}</span>
         </div>
 
         {/* Search Bar - Desktop */}
@@ -79,7 +85,7 @@ export const StorefrontHeader = ({
               type="text"
               placeholder="Buscar produtos..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              onClick={onSearchClick}
+              onFocus={onSearchClick}
             />
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
@@ -101,8 +107,11 @@ export const StorefrontHeader = ({
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-[#1F2937] hover:bg-[#F3F4F6] transition-colors"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-controls="storefront-user-menu"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D22630] text-white">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full text-white" style={{ backgroundColor: primaryColor }}>
                   {cliente.nome.charAt(0).toUpperCase()}
                 </div>
                 <span className="hidden sm:inline">{cliente.nome.split(" ")[0]}</span>
@@ -111,7 +120,7 @@ export const StorefrontHeader = ({
 
               {/* Dropdown Menu */}
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-md border border-[#E5E7EB] bg-white shadow-lg">
+                <div id="storefront-user-menu" role="menu" className="absolute right-0 mt-2 w-56 rounded-md border border-[#E5E7EB] bg-white shadow-lg">
                   <div className="border-b border-[#E5E7EB] px-4 py-3">
                     <p className="text-sm font-medium text-[#1F2937]">{cliente.nome}</p>
                     <p className="text-xs text-[#6B7280]">{cliente.email}</p>
@@ -120,13 +129,16 @@ export const StorefrontHeader = ({
                     <button
                       onClick={handleMyOrders}
                       className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#1F2937] hover:bg-[#F3F4F6] transition-colors"
+                      role="menuitem"
                     >
                       <Package size={16} />
                       <span>Meus Pedidos</span>
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[#D22630] hover:bg-[#F3F4F6] transition-colors"
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-[#F3F4F6] transition-colors"
+                      style={{ color: primaryColor }}
+                      role="menuitem"
                     >
                       <LogOut size={16} />
                       <span>Sair</span>
@@ -138,7 +150,8 @@ export const StorefrontHeader = ({
           ) : (
             <button
               onClick={handleLogin}
-              className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-[#D22630] hover:bg-[#D22630]/5 border border-[#D22630] transition-colors"
+              className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors"
+              style={{ color: primaryColor, borderColor: primaryColor, borderWidth: 1 }}
             >
               <User size={18} />
               <span>Entrar</span>
@@ -147,9 +160,9 @@ export const StorefrontHeader = ({
 
           {/* Cart Button */}
           <button onClick={onCartClick} className="relative" aria-label="Carrinho">
-            <ShoppingCart className="text-[#D22630]" size={24} />
+            <ShoppingCart style={{ color: primaryColor }} size={24} />
             {cartItemsCount > 0 && (
-              <span className="absolute -right-2 -top-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#FFC107] px-1 text-xs text-[#1F2937] font-medium">
+              <span className="absolute -right-2 -top-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs text-[#1F2937] font-medium" style={{ backgroundColor: secondaryColor }}>
                 {cartItemsCount}
               </span>
             )}

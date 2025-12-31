@@ -266,3 +266,10 @@ As correções implementadas resolvem **100%** dos erros 500 identificados nas A
 **Data:** 2025-10-12  
 **Branch:** fix/api-errors-500  
 **Commit:** 93337c7
+## 2025-10-27 — Correção de acesso a `/admin/store/settings`
+
+- Sintoma: Erro de módulo ESM no frontend — `SyntaxError: The requested module '/src/services/backendApi.ts' does not provide an export named 'themeApi'`, tornando a página de Configurações da Loja inacessível.
+- Causa raiz: `src/services/backendApi.ts` definia `themeApi` mas não o exportava como named export. `Settings.tsx` importa `{ themeApi }` via named export.
+- Alteração aplicada: Adicionado `themeApi` à lista de exports nomeados em `src/services/backendApi.ts`.
+- Validação: Verificados logs do Vite com HMR ativo; ausência do erro de export. Rota `/admin/store/settings` registrada em `src/routes/admin.routes.tsx` com `RequireAuth role="empresa"`. Backend de desenvolvimento em execução.
+- Observações: Endpoint `/v1/theme` exige autenticação (roles `ADMIN_EMPRESA` ou `SUPER_ADMIN`). Em desenvolvimento, garantir `VITE_API_URL` apontando para `http://localhost:3002/api` e backend ativo.

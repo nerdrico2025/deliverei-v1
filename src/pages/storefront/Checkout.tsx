@@ -7,6 +7,7 @@ import { useCart } from "../../hooks/useCart";
 import { useClientAuth } from "../../contexts/ClientAuthContext";
 import { User } from "lucide-react";
 import { formatCurrency } from "../../utils/formatters";
+import { carrinhoApi } from "../../services/backendApi";
 
 // Validation helper functions
 const validateEmail = (email: string): boolean => {
@@ -144,33 +145,22 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      // TODO: Implement order creation API call
-      // If user is not authenticated, pass personal data to create account after order
-      const orderData = {
-        items,
-        endereco: {
-          cep,
+      const checkoutReq = {
+        enderecoEntrega: {
           rua,
           numero,
           complemento,
           bairro,
           cidade,
-          uf,
+          estado: uf,
+          cep,
         },
-        ...(!isAuthenticated && {
-          dadosPessoais: {
-            nome,
-            email,
-            telefone,
-            cpf: cpf || null,
-          },
-        }),
+        formaPagamento: 'PIX',
       };
-      
-      // Simulate API call
-      await new Promise((r) => setTimeout(r, 1000));
-      
-      // Store order data in sessionStorage for post-purchase flow
+      const resp = await carrinhoApi.checkout(checkoutReq as any);
+      const pedidoId = (resp as any)?.pedidoId || 'unknown';
+      const status = (resp as any)?.status || 'PENDENTE';
+      const totalResp = (resp as any)?.total ?? total;
       if (!isAuthenticated) {
         sessionStorage.setItem("pendingAccount", JSON.stringify({
           nome,
@@ -188,9 +178,8 @@ export default function Checkout() {
           },
         }));
       }
-
       clear();
-      navigate(`/loja/${slug}/order-confirmation?pedido=12345`);
+      navigate(`/loja/${slug}/order-confirmation?pedido=${pedidoId}&status=${status}&total=${totalResp}`);
     } catch (error) {
       console.error("Error creating order:", error);
       alert("Erro ao finalizar pedido. Tente novamente.");

@@ -23,6 +23,11 @@ export class CreateProdutoDto {
   preco: number;
 
   @IsOptional()
+  @IsNumber({}, { message: 'Preço riscado deve ser um número' })
+  @Min(0, { message: 'Preço riscado não pode ser negativo' })
+  preco_riscado?: number;
+
+  @IsOptional()
   @IsString({ message: 'Imagem deve ser uma string (URL)' })
   imagem?: string;
 

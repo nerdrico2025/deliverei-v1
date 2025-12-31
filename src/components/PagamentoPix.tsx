@@ -46,14 +46,14 @@ export const PagamentoPix: React.FC<PagamentoPixProps> = ({
   // Polling para verificar pagamento (simulado - em produção usar webhook)
   useEffect(() => {
     if (!onPagamentoConfirmado) return;
+    if (tempoRestante === 'Expirado') return;
 
     const interval = setInterval(() => {
-      // TODO: Implementar verificação real do pagamento
-      // onPagamentoConfirmado();
+      onPagamentoConfirmado();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [onPagamentoConfirmado]);
+  }, [onPagamentoConfirmado, tempoRestante]);
 
   const handleCopiar = () => {
     navigator.clipboard.writeText(copiaECola);

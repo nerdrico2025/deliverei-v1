@@ -7,6 +7,7 @@ import {
   DefaultValuePipe,
 } from '@nestjs/common';
 import { PublicService } from './public.service';
+import { Header } from '@nestjs/common';
 import { Public } from '../../decorators/public.decorator';
 
 @Controller('public')
@@ -41,5 +42,11 @@ export class PublicController {
   @Get(':slug/categorias')
   async getCategorias(@Param('slug') slug: string) {
     return this.publicService.getCategorias(slug);
+  }
+
+  @Get(':slug/theme')
+  @Header('Cache-Control', 'no-store')
+  async getTheme(@Param('slug') slug: string) {
+    return this.publicService.getTheme(slug);
   }
 }

@@ -73,6 +73,9 @@ const pedidosPorEmpresa = {
 };
 
 const cuponsPorEmpresa = { emp_pizza: [], emp_burger: [] };
+// In-memory theme settings per empresa
+// Shape matches frontend expectations: { backgroundImage?, primaryColor, secondaryColor, accentColor?, updatedAt }
+const themesByEmpresaId = new Map();
 
 const tokens = new Map(); // token -> { userId, empresaId }
 const refreshTokens = new Map(); // refreshToken -> { userId, empresaId }
@@ -163,6 +166,16 @@ app.get('/api/public/:slug/categorias', (req, res) => {
   res.json(categorias);
 });
 
+// Public theme (storefront) by slug
+app.get('/api/public/:slug/theme', (req, res) => {
+  const { slug } = req.params;
+  const empresa = getEmpresaBySlug(slug);
+  if (!empresa) return res.status(404).json({ message: 'Loja não encontrada' });
+  const settings = themesByEmpresaId.get(empresa.id) || null;
+  res.set('Cache-Control', 'no-store');
+  res.json({ settings });
+});
+
 // Auth
 app.post('/api/auth/login', (req, res) => {
   const { email, senha } = req.body || {};
@@ -240,6 +253,53 @@ app.post('/api/admin/store/domain', authMiddleware, (req, res) => {
 });
 
 app.get('/api/admin/domain-dns', authMiddleware, async (req, res) => {
+  const domain = sanitizeDomain(req.query.domain || '');
+  if (!domain) return res.status(400).json({ ok: false, message: 'Domínio não informado' });
+  if (!isValidDomain(domain)) return res.status(400).json({ ok: false, message: 'Formato de domínio inválido' });
+  const result = { A: [], CNAME: [] };
+  try {
+    try { result.CNAME = await dns.resolveCname(domain); } catch {}
+    try { result.A = await dns.resolve4(domain); } catch {}
+    const ok = (result.CNAME && result.CNAME.length > 0) || (result.A && result.A.length > 0);
+    res.json({ ok, records: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: 'Erro ao consultar DNS', error: String(err && err.message || err) });
+  }
+});
+
+// Domains (REST) to match frontend domainApi
+app.get('/api/domains/current', authMiddleware, (req, res) => {
+  const empresa = empresas.find((e) => e.id === req.empresaId);
+  if (!empresa) return res.status(404).json({ message: 'Empresa não encontrada' });
+  res.json({ slug: empresa.slug, customDomain: empresa.customDomain || null, redirectEnabled: !!empresa.redirectEnabled });
+});
+
+app.get('/api/domains/check', authMiddleware, (req, res) => {
+  const domain = sanitizeDomain(req.query.domain || '');
+  if (!domain) return res.status(400).json({ available: false, message: 'Domínio não informado' });
+  if (!isValidDomain(domain)) return res.status(400).json({ available: false, message: 'Formato de domínio inválido' });
+  const available = !isDomainInUse(domain, req.empresaId);
+  res.json({ available });
+});
+
+app.post('/api/domains/save', authMiddleware, (req, res) => {
+  const { customDomain, redirectEnabled } = req.body || {};
+  const empresa = empresas.find((e) => e.id === req.empresaId);
+  if (!empresa) return res.status(404).json({ message: 'Empresa não encontrada' });
+  const domain = sanitizeDomain(customDomain);
+  if (!domain) return res.status(400).json({ message: 'Domínio não informado' });
+  if (!isValidDomain(domain)) return res.status(400).json({ message: 'Formato de domínio inválido' });
+  if (isDomainInUse(domain, req.empresaId)) {
+    return res.status(409).json({ message: 'Domínio já está em uso por outra loja' });
+  }
+  empresa.customDomain = domain;
+  if (typeof redirectEnabled === 'boolean') {
+    empresa.redirectEnabled = !!redirectEnabled;
+  }
+  res.json({ sucesso: true, customDomain: domain, redirectEnabled: !!empresa.redirectEnabled });
+});
+
+app.get('/api/domains/dns-status', authMiddleware, async (req, res) => {
   const domain = sanitizeDomain(req.query.domain || '');
   if (!domain) return res.status(400).json({ ok: false, message: 'Domínio não informado' });
   if (!isValidDomain(domain)) return res.status(400).json({ ok: false, message: 'Formato de domínio inválido' });
@@ -375,6 +435,34 @@ app.post('/api/carrinho/checkout', authMiddleware, (req, res) => {
   const carrinho = carrinhos.get(userId);
   if (!carrinho || carrinho.itens.length === 0) return res.status(400).json({ message: 'Carrinho vazio' });
   res.json({ pedidoId: uuidv4(), status: 'CONFIRMADO', total: carrinho.total, mensagem: 'Pedido criado com sucesso' });
+});
+
+// Admin Theme API for current company
+app.get('/api/v1/theme', authMiddleware, (req, res) => {
+  const empresa = empresas.find((e) => e.id === req.empresaId);
+  if (!empresa) return res.status(404).json({ message: 'Empresa não encontrada' });
+  const settings = themesByEmpresaId.get(empresa.id) || null;
+  res.json({ settings });
+});
+
+app.put('/api/v1/theme', authMiddleware, (req, res) => {
+  const empresa = empresas.find((e) => e.id === req.empresaId);
+  if (!empresa) return res.status(404).json({ message: 'Empresa não encontrada' });
+
+  const body = req.body || {};
+  const primaryColor = String(body.primaryColor || '').trim();
+  const secondaryColor = String(body.secondaryColor || '').trim();
+  const accentColor = body.accentColor ? String(body.accentColor).trim() : undefined;
+  const backgroundImage = body.backgroundImage ? String(body.backgroundImage) : undefined;
+  const updatedAt = Date.now();
+
+  if (!primaryColor || !secondaryColor) {
+    return res.status(400).json({ message: 'Cores primária e secundária são obrigatórias' });
+  }
+
+  const settings = { backgroundImage, primaryColor, secondaryColor, accentColor, updatedAt };
+  themesByEmpresaId.set(empresa.id, settings);
+  res.json({ sucesso: true, settings });
 });
 
 // Pedidos

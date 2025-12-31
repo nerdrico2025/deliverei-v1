@@ -9,6 +9,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Headers,
 } from '@nestjs/common';
 import { PagamentosService } from './pagamentos.service';
 import { CreatePagamentoDto } from './dto/create-pagamento.dto';
@@ -20,8 +21,8 @@ export class PagamentosController {
   constructor(private readonly pagamentosService: PagamentosService) {}
 
   @Post('criar')
-  async criarPagamento(@Body() dto: CreatePagamentoDto, @Request() req) {
-    return this.pagamentosService.criarPagamento(dto, req.user.empresaId);
+  async criarPagamento(@Body() dto: CreatePagamentoDto, @Request() req, @Headers('X-Asaas-Token') asaasToken?: string) {
+    return this.pagamentosService.criarPagamento(dto, req.user.empresaId, asaasToken);
   }
 
   @Get(':id')
@@ -49,5 +50,11 @@ export class PagamentosController {
   @HttpCode(HttpStatus.OK)
   async cancelarPagamento(@Param('id') id: string, @Request() req) {
     return this.pagamentosService.cancelarPagamento(id, req.user.empresaId);
+  }
+
+  @Post('asaas/testar')
+  @HttpCode(HttpStatus.OK)
+  async testarConexao(@Request() req, @Headers('X-Asaas-Token') asaasToken?: string) {
+    return this.pagamentosService.testarConexaoAsaas(asaasToken);
   }
 }

@@ -24,6 +24,7 @@
     "prisma:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
+    "@sentry/node": "^7.114.0",
     "@nestjs/axios": "^3.0.2",
     "@nestjs/common": "^10.3.8",
     "@nestjs/config": "^3.2.2",

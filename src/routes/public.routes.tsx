@@ -22,6 +22,10 @@ export const publicRoutes: RouteObject[] = [
     element: <Home />,
   },
   {
+    path: '/__health',
+    element: <div style={{ padding: 16 }}>OK</div>,
+  },
+  {
     path: '/login',
     element: <LoginBackend />,
   },

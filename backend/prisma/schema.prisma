@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // Enums convertidos para strings para compatibilidade com SQLite
@@ -23,6 +24,8 @@ model Empresa {
   ativo       Boolean  @default(true)
   slug        String?  @unique
   subdominio  String?  @unique
+  // Configurações de tema da vitrine (JSON)
+  vitrineTheme Json?   @map("vitrine_theme")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   asaasCustomerId String? @map("asaas_customer_id")
@@ -32,6 +35,7 @@ model Empresa {
   carrinhos Carrinho[]
   cupons    Cupom[]
   pagamentos Pagamento[]
+  categorias Categoria[]
 
   @@map("empresas")
 }
@@ -64,6 +68,7 @@ model Produto {
   nome      String
   descricao String?
   preco     Float
+  preco_riscado Float?
   imagem    String?
   ativo     Boolean  @default(true)
   empresaId String
@@ -85,6 +90,19 @@ model Produto {
   @@index([empresaId, ativo])
   @@index([empresaId, categoria])
   @@map("produtos")
+}
+
+model Categoria {
+  id        String   @id @default(uuid())
+  empresaId String
+  nome      String
+  createdAt DateTime @default(now())
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@unique([empresaId, nome])
+  @@index([empresaId])
+  @@map("categorias")
 }
 
 model Pedido {

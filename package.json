@@ -5,13 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/prebuild-check.js",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "mock:api": "node mock-backend/server.js"
+    "mock:api": "node mock-backend/server.js",
+    "test": "vitest run",
+    "ci:check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
+    "@sentry/react": "^7.114.0",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "@stripe/react-stripe-js": "^5.2.0",
@@ -33,6 +37,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^8.57.0",
+    "@testing-library/jest-dom": "^6.4.3",
+    "@testing-library/react": "^14.0.0",
     "@types/node": "^24.9.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
@@ -48,6 +54,7 @@
     "tailwindcss": "^3.4.1",
     "terser": "^5.44.0",
     "typescript": "^5.9.3",
-    "vite": "^5.2.11"
+    "vite": "^5.2.11",
+    "vitest": "^1.6.0"
   }
 }

@@ -219,9 +219,7 @@ function toDomainUrl(domain: string): string {
 
 export function getPublicOrigin(): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const isLocal = /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(origin);
-  const envDomain = (import.meta as any)?.env?.VITE_PUBLIC_APP_DOMAIN || 'https://deliverei.com.br';
-  return isLocal ? envDomain : origin;
+  return origin || 'http://localhost:5173';
 }
 
 export function buildStoreUrl(slug: string): string {

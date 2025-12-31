@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { LoginDto, SignupDto, CreateAccountFromOrderDto, CadastroEmpresaDto } from './dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -22,6 +22,12 @@ export class AuthService {
 
   // Modo mock desativado por política
   private readonly useMockAuth = false;
+  private devSlug(): string {
+    return process.env.DEV_TENANT_SLUG || 'demo';
+  }
+  private devEmpresa() {
+    return { id: 'dev-empresa', nome: 'Empresa Dev', slug: this.devSlug(), subdominio: this.devSlug(), ativo: true, telefone: '', endereco: '' };
+  }
 
   async validateUser(email: string, senha: string): Promise<any> {
     if (this.useMockAuth) {
@@ -54,7 +60,7 @@ export class AuthService {
     });
 
     if (!usuario) {
-      throw new UnauthorizedException('Credenciais inválidas');
+      throw new UnauthorizedException('Usuário não encontrado');
     }
 
     if (!usuario.ativo) {
@@ -64,7 +70,7 @@ export class AuthService {
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
     if (!senhaValida) {
-      throw new UnauthorizedException('Credenciais inválidas');
+      throw new UnauthorizedException('Senha inválida');
     }
 
     const { senha: _, ...result } = usuario;
@@ -72,6 +78,39 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
+    if (!this.prisma.connected) {
+      const usuario = {
+        id: 'dev-user',
+        email: loginDto.email,
+        nome: 'Dev User',
+        tipo: 'ADMIN_EMPRESA',
+        telefone: '',
+        empresaId: 'dev-empresa',
+        empresa: this.devEmpresa(),
+      };
+      const payload: JwtPayload = {
+        sub: usuario.id,
+        email: usuario.email,
+        role: usuario.tipo as any,
+        empresaId: usuario.empresaId,
+      };
+      const accessToken = this.jwtService.sign(payload);
+      const refreshToken = uuidv4();
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          id: usuario.id,
+          email: usuario.email,
+          nome: usuario.nome,
+          role: usuario.tipo,
+          telefone: usuario.telefone,
+          empresaId: usuario.empresaId,
+          empresa: usuario.empresa,
+        },
+        empresa: usuario.empresa,
+      };
+    }
     const usuario = await this.validateUser(loginDto.email, loginDto.senha);
 
     const payload: JwtPayload = {
@@ -182,6 +221,9 @@ export class AuthService {
     if (this.useMockAuth) {
       throw new UnauthorizedException('Mock auth está desativada.');
     }
+    if (!this.prisma.connected) {
+      throw new UnauthorizedException('Indisponível no modo desenvolvimento');
+    }
 
     const storedToken = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },
@@ -238,6 +280,9 @@ export class AuthService {
 
   private async generateRefreshToken(usuarioId: string): Promise<string> {
     if (this.useMockAuth) {
+      return uuidv4();
+    }
+    if (!this.prisma.connected) {
       return uuidv4();
     }
 

@@ -43,9 +43,11 @@ export const Button = ({
       onClick={onClick}
       disabled={disabled || loading}
       className={classes}
+      aria-disabled={disabled || loading}
+      aria-busy={loading}
     >
       {loading ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" role="status" aria-label="Carregando">
           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
           {children}
         </div>

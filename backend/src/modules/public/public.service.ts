@@ -1,9 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { StorefrontThemeSettings } from '../theme/theme.service';
 
 @Injectable()
 export class PublicService {
   constructor(private readonly prisma: PrismaService) {}
+  private readonly defaultTheme: StorefrontThemeSettings = {
+    primaryColor: '#111827',
+    secondaryColor: '#F9FAFB',
+    accentColor: '#3B82F6',
+    updatedAt: Date.now(),
+  };
 
   async getLojaBySlug(slug: string) {
     const empresa = await this.prisma.empresa.findUnique({
@@ -95,7 +102,7 @@ export class PublicService {
   async getCategorias(slug: string) {
     const empresa = await this.getLojaBySlug(slug);
 
-    const categorias = await this.prisma.produto.findMany({
+    const categoriasProdutos = await this.prisma.produto.findMany({
       where: {
         empresaId: empresa.id,
         ativo: true,
@@ -107,8 +114,32 @@ export class PublicService {
       distinct: ['categoria'],
     });
 
-    return categorias
-      .filter((c) => c.categoria)
-      .map((c) => c.categoria);
+    const categoriasSalvas = await this.prisma.categoria.findMany({
+      where: { empresaId: empresa.id },
+      select: { nome: true },
+    });
+
+    const set = new Set<string>();
+    categoriasProdutos.forEach((c) => c.categoria && set.add(c.categoria));
+    categoriasSalvas.forEach((c) => c.nome && set.add(c.nome));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+
+  async getTheme(slug: string): Promise<{ settings: StorefrontThemeSettings | null }> {
+    try {
+      const empresa = await this.prisma.empresa.findUnique({
+        where: { slug },
+      });
+      if (!empresa) {
+        throw new NotFoundException('Loja não encontrada');
+      }
+      if (!empresa.ativo) {
+        throw new NotFoundException('Loja inativa');
+      }
+      const settings = (((empresa as any)?.vitrineTheme ?? (empresa as any)?.vitrine_theme) as any) || null;
+      return { settings };
+    } catch {
+      return { settings: this.defaultTheme };
+    }
   }
 }

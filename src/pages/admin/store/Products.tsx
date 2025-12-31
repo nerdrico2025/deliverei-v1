@@ -184,8 +184,9 @@ export default function ProductsPage() {
       setModalOpen(false);
       await fetchProducts();
     } catch (error) {
-      console.error('Error creating product:', error);
-      push({ message: 'Erro ao criar produto', tone: 'error' });
+      const msg = getErrorMessage(error);
+      const tone = isNetworkError(error) ? 'warning' : 'error';
+      push({ message: `Erro ao criar produto: ${msg}`, tone });
     } finally {
       setSubmitting(false);
     }
@@ -213,8 +214,9 @@ export default function ProductsPage() {
       setSelectedProduct(null);
       await fetchProducts();
     } catch (error) {
-      console.error('Error updating product:', error);
-      push({ message: 'Erro ao atualizar produto', tone: 'error' });
+      const msg = getErrorMessage(error);
+      const tone = isNetworkError(error) ? 'warning' : 'error';
+      push({ message: `Erro ao atualizar produto: ${msg}`, tone });
     } finally {
       setSubmitting(false);
     }

@@ -11,7 +11,7 @@ export class PagamentosService {
     private asaasService: AsaasService,
   ) {}
 
-  async criarPagamento(dto: CreatePagamentoDto, empresaId: string) {
+  async criarPagamento(dto: CreatePagamentoDto, empresaId: string, asaasToken?: string) {
     const empresa = await this.prisma.empresa.findUnique({
       where: { id: empresaId },
     });
@@ -28,7 +28,7 @@ export class PagamentosService {
         email: dto.clienteEmail,
         cpfCnpj: dto.clienteCpfCnpj,
         phone: dto.clienteTelefone,
-      });
+      }, asaasToken);
       customerId = customer.id;
 
       await this.prisma.empresa.update({
@@ -44,7 +44,7 @@ export class PagamentosService {
       value: dto.valor,
       dueDate: dto.dataVencimento,
       description: dto.descricao,
-    });
+    }, asaasToken);
 
     // Salvar no banco
     const pagamento = await this.prisma.pagamento.create({
@@ -177,5 +177,9 @@ export class PagamentosService {
         });
         break;
     }
+  }
+
+  async testarConexaoAsaas(asaasToken?: string) {
+    return this.asaasService.testarConexao(asaasToken);
   }
 }

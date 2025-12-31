@@ -31,25 +31,14 @@ export default function Login() {
         return;
       }
 
-      // Determine redirect based on email/role
-      // This logic mirrors the AuthContext login logic
-      let redirectPath = "/dashboard"; // default for cliente
-      
-      if (email === "admin@deliverei.com.br") {
-        redirectPath = "/admin/super";
-      } else if (email === "admin@pizza-express.com" || email === "admin@burger-king.com") {
-        redirectPath = "/admin/store";
-      } else if (email.includes("+super")) {
-        redirectPath = "/admin/super";
-      } else if (email.includes("+suporte")) {
-        redirectPath = "/support/tickets";
-      } else if (email.includes("+cliente")) {
-        redirectPath = "/storefront";
-      } else if (!email.includes("cliente@")) {
-        // Assume empresa for other emails
-        redirectPath = "/admin/store";
-      }
-      
+      // Redirecionar com base no papel do usuário (padrão de mercado)
+      let redirectPath = "/storefront";
+      const role = (useAuth().user?.role) || undefined;
+      if (role === "superadmin") redirectPath = "/admin/super";
+      else if (role === "empresa") redirectPath = "/admin/store";
+      else if (role === "suporte") redirectPath = "/support/tickets";
+      else if (role === "cliente") redirectPath = "/storefront";
+
       navigate(redirectPath, { replace: true });
     } catch (err) {
       error("Erro ao fazer login. Tente novamente.");

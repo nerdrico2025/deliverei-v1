@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface CartItem {
   id: string;
@@ -20,6 +20,43 @@ interface UseCartReturn {
 
 export const useCart = (): UseCartReturn => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const storageKey = (() => {
+    try {
+      const slug =
+        (typeof window !== 'undefined' &&
+          (window.localStorage.getItem('deliverei_tenant_slug') ||
+            window.localStorage.getItem('deliverei_store_slug') ||
+            window.localStorage.getItem('tenantSlug'))) ||
+        'default';
+      return `deliverei_cart_${slug}`;
+    } catch {
+      return 'deliverei_cart_default';
+    }
+  })();
+
+  useEffect(() => {
+    try {
+      const raw = (typeof window !== 'undefined') ? window.localStorage.getItem(storageKey) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as CartItem[];
+        if (Array.isArray(parsed)) {
+          setItems(parsed.filter((i) => i && typeof i.id === 'string' && typeof i.price === 'number' && typeof i.quantity === 'number'));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, JSON.stringify(items));
+      }
+    } catch {
+      // ignore
+    }
+  }, [items, storageKey]);
 
   const addItem = useCallback((product: Omit<CartItem, 'quantity'>) => {
     setItems((currentItems: CartItem[]) => {
